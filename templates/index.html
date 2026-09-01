@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Interior Designer</title>
+</head>
+<body>
+
+<h2>Upload Room Image</h2>
+
+<form action="/upload" method="POST" enctype="multipart/form-data">
+
+    <input
+        type="file"
+        name="image"
+        accept="image/*"
+        capture="environment"
+        required
+    >
+
+    <button type="submit">
+        Analyze Room
+    </button>
+
+</form>
+
+</body>
+</html>
