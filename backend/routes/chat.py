@@ -141,15 +141,22 @@ def _serialize_room(room):
     }
 
 
-def _get_room(room_id=None):
+def _get_room(room_id=None, user_id=None):
     if room_id:
+        if user_id:
+            user_room = RoomUpload.query.filter_by(id=room_id, user_id=user_id).first()
+            if user_room:
+                return user_room
         return db.session.get(RoomUpload, room_id)
-    return RoomUpload.query.order_by(RoomUpload.id.desc()).first()
+    if user_id:
+        return RoomUpload.query.filter_by(user_id=user_id).order_by(RoomUpload.id.desc()).first()
+    return None
 
 
 @chat.route("/latest-room", methods=["GET"])
 def latest_room():
-    room = _get_room()
+    user_id = request.args.get("user_id", type=int)
+    room = _get_room(user_id=user_id) if user_id else _get_room()
     if room is None:
         return jsonify({"success": False, "message": "No room uploaded."}), 404
 
@@ -268,9 +275,10 @@ def select_option():
     try:
         data = request.get_json() or {}
         room_id = data.get("room_id")
+        user_id = data.get("user_id")
         option_id = int(data.get("option_id", 1))
 
-        room = _get_room(room_id)
+        room = _get_room(room_id, user_id)
         if room is None:
             return jsonify({"success": False, "message": "Room not found."}), 404
 
@@ -407,12 +415,13 @@ def add_product():
     try:
         data = request.get_json() or {}
         room_id = data.get("room_id")
+        user_id = data.get("user_id")
         asin = data.get("asin")
         product_data = data.get("product")
         pos_x = data.get("pos_x")  # Optional percentage (0-100) for custom placement
         pos_y = data.get("pos_y")
 
-        room = _get_room(room_id)
+        room = _get_room(room_id, user_id)
         if room is None:
             return jsonify({"success": False, "message": "Room not found."}), 404
 
@@ -557,11 +566,12 @@ def replace_product():
     try:
         data = request.get_json() or {}
         room_id = data.get("room_id")
+        user_id = data.get("user_id")
         old_item_id = data.get("old_item_id")
         new_asin = data.get("new_asin")
         new_product_data = data.get("new_product")
 
-        room = _get_room(room_id)
+        room = _get_room(room_id, user_id)
         if room is None:
             return jsonify({"success": False, "message": "Room not found."}), 404
 
@@ -668,9 +678,10 @@ def remove_product():
     try:
         data = request.get_json() or {}
         room_id = data.get("room_id")
+        user_id = data.get("user_id")
         item_id = data.get("item_id")
 
-        room = _get_room(room_id)
+        room = _get_room(room_id, user_id)
         if room is None:
             return jsonify({"success": False, "message": "Room not found."}), 404
 
@@ -725,12 +736,13 @@ def chat_message():
         data = request.get_json() or {}
         message = (data.get("message") or "").strip()
         room_id = data.get("room_id")
+        user_id = data.get("user_id")
         generate_image = data.get("generate_image", True)
 
         if not message:
             return jsonify({"success": False, "message": "Message is required."}), 400
 
-        room = _get_room(room_id)
+        room = _get_room(room_id, user_id)
         if room is None:
             return jsonify({"success": False, "message": "No room uploaded. Please start a room first."}), 404
 

@@ -58,10 +58,16 @@ instance/
 # ==========================================
 # Generated Files & Runtime Artifacts
 # ==========================================
+uploads/*
+!uploads/.gitkeep
+!uploads/generated/
+!uploads/results/
 uploads/generated/*
 !uploads/generated/.gitkeep
 uploads/results/*
 !uploads/results/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
 backend/uploads/generated/*
 !backend/uploads/generated/.gitkeep
 backend/uploads/results/*

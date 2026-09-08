@@ -24,13 +24,18 @@ def generate_design():
     try:
         data = request.get_json() or {}
         prompt = (data.get("prompt") or "").strip()
-        room_id = data.get("room_id")
+        user_id = data.get("user_id")
 
         if not prompt:
             return jsonify({"success": False, "message": "Prompt is required."}), 400
 
         if room_id:
-            room = db.session.get(RoomUpload, room_id)
+            if user_id:
+                room = RoomUpload.query.filter_by(id=room_id, user_id=user_id).first() or db.session.get(RoomUpload, room_id)
+            else:
+                room = db.session.get(RoomUpload, room_id)
+        elif user_id:
+            room = RoomUpload.query.filter_by(user_id=user_id).order_by(RoomUpload.id.desc()).first()
         else:
             room = RoomUpload.query.order_by(RoomUpload.id.desc()).first()
 

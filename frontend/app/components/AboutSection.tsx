@@ -49,16 +49,7 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
             {/* Left Content Column */}
             <div className="lg:col-span-6 space-y-6">
-              <div
-                className={`inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold uppercase tracking-[0.2em] border ${
-                  isLight
-                    ? "bg-stone-100/90 text-stone-700 border-stone-200"
-                    : "bg-slate-900 text-slate-300 border-slate-800"
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400"></span>
-                About RenderAI
-              </div>
+
 
               <h1
                 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.18] ${
@@ -171,16 +162,7 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
 
             {/* Right Story Column */}
             <div className="lg:col-span-6 order-1 lg:order-2 space-y-6">
-              <div
-                className={`inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold uppercase tracking-[0.2em] border ${
-                  isLight
-                    ? "bg-stone-100/90 text-stone-700 border-stone-200"
-                    : "bg-slate-900 text-slate-300 border-slate-800"
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400"></span>
-                Our Story
-              </div>
+
 
               <h2
                 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.18] ${
@@ -239,17 +221,6 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
           {/* Section Header */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-6 space-y-4">
-              <div
-                className={`inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold uppercase tracking-[0.2em] border ${
-                  isLight
-                    ? "bg-stone-100/90 text-stone-700 border-stone-200"
-                    : "bg-slate-900 text-slate-300 border-slate-800"
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400"></span>
-                Why We Built RenderAI
-              </div>
-
               <h2
                 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.18] ${
                   isLight ? "text-stone-900" : "text-white"

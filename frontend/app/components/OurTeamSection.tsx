@@ -92,16 +92,6 @@ export default function OurTeamSection() {
       <div className="max-w-6xl mx-auto space-y-14">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto space-y-3">
-          <div
-            className={`inline-flex items-center gap-2 px-3.5 py-1 rounded-full border text-xs font-semibold uppercase tracking-wider ${
-              isLight
-                ? "border-indigo-200 bg-indigo-50 text-indigo-700"
-                : "border-indigo-500/30 bg-indigo-500/10 text-indigo-300"
-            }`}
-          >
-            👥 Core Contributors
-          </div>
-
           <h2
             className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
               isLight

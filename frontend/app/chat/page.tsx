@@ -279,6 +279,18 @@ export default function ChatPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
 
+  const getUserId = (): number | undefined => {
+    if (typeof window === "undefined") return undefined;
+    const userStr = localStorage.getItem("user");
+    if (!userStr) return undefined;
+    try {
+      const u = JSON.parse(userStr);
+      return u.user_id ? Number(u.user_id) : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
   // Load latest room on mount
   useEffect(() => {
     loadLatestRoom();
@@ -294,7 +306,9 @@ export default function ChatPage() {
   const loadLatestRoom = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/latest-room");
+      const userId = getUserId();
+      const params = userId ? { user_id: userId } : {};
+      const res = await api.get("/latest-room", { params });
       if (res.data.success) {
         const data = res.data as RoomData;
         setRoom(data);
@@ -314,6 +328,8 @@ export default function ChatPage() {
               ? data.generated_image
               : API_BASE + data.generated_image + "?t=" + Date.now()
           );
+        } else {
+          setGeneratedImage("");
         }
 
         const history = data.chat_history || [];
@@ -331,7 +347,14 @@ export default function ChatPage() {
         }
       }
     } catch {
-      // No room uploaded yet -> open setup modal
+      // No room uploaded yet for this user -> reset to empty state and open setup modal
+      setRoom(null);
+      setFurnitureItems([]);
+      setGeneratedImage("");
+      setTotalBudget(50000);
+      setUsedBudget(0);
+      setRemainingBudget(50000);
+      setIsOverBudget(false);
       setShowSetupModal(true);
       setMessages([
         {
@@ -363,27 +386,19 @@ export default function ChatPage() {
   const handleStartNewSession = async () => {
     try {
       setSetupLoading(true);
+      const userId = getUserId();
       const formData = new FormData();
       formData.append("room_length", setupLength || "14");
       formData.append("room_width", setupWidth || "12");
       formData.append("room_height", setupHeight || "10");
       formData.append("is_empty_room", uploadFile ? "false" : "true");
-
-      const userStr = localStorage.getItem("user");
-      if (userStr) {
-        try {
-          const u = JSON.parse(userStr);
-          if (u.user_id) formData.append("user_id", String(u.user_id));
-        } catch {
-          /* ignore */
-        }
-      }
+      if (userId) formData.append("user_id", String(userId));
 
       if (uploadFile) {
         formData.append("image", uploadFile);
       }
 
-      const res = await api.post("/upload", formData, {
+      const res = await api.post("/chat/init-room", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -419,6 +434,8 @@ export default function ChatPage() {
       setSending(true);
       const res = await api.post("/chat", {
         message: label,
+        room_id: room?.room_id,
+        user_id: getUserId(),
       });
 
       if (res.data.success) {
@@ -465,6 +482,8 @@ export default function ChatPage() {
       setSending(true);
       const res = await api.post("/chat", {
         message: `Show ${categoryLabel}`,
+        room_id: room?.room_id,
+        user_id: getUserId(),
       });
 
       if (res.data.success) {
@@ -513,6 +532,8 @@ export default function ChatPage() {
       setSending(true);
       const res = await api.post("/chat", {
         message: `Budget is ${budgetValue}`,
+        room_id: room?.room_id,
+        user_id: getUserId(),
       });
 
       if (res.data.success) {
@@ -559,6 +580,8 @@ export default function ChatPage() {
       setSending(true);
       const res = await api.post("/chat/select-option", {
         option_id: optionId,
+        room_id: room?.room_id,
+        user_id: getUserId(),
       });
 
       if (res.data.success) {
@@ -617,6 +640,8 @@ export default function ChatPage() {
         asin: product.asin,
         pos_x: posX,
         pos_y: posY,
+        room_id: room?.room_id,
+        user_id: getUserId(),
       });
 
       if (res.data.success) {
@@ -672,6 +697,8 @@ export default function ChatPage() {
         old_item_id: oldItemId,
         new_product: newProduct,
         new_asin: newProduct.asin,
+        room_id: room?.room_id,
+        user_id: getUserId(),
       });
 
       if (res.data.success) {
@@ -716,6 +743,8 @@ export default function ChatPage() {
       setSending(true);
       const res = await api.post("/chat/remove-product", {
         item_id: itemId,
+        room_id: room?.room_id,
+        user_id: getUserId(),
       });
 
       if (res.data.success) {
@@ -816,6 +845,8 @@ export default function ChatPage() {
       setSending(true);
       const res = await api.post("/chat", {
         message: textToSend,
+        room_id: room?.room_id,
+        user_id: getUserId(),
       });
 
       if (res.data.success) {
