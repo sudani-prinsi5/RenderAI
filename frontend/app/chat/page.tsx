@@ -907,17 +907,17 @@ export default function ChatPage() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
+      className={`h-screen flex flex-col font-sans relative overflow-hidden transition-colors duration-200 ${
         isLight ? "bg-[#F8F9FA] text-slate-800" : "bg-slate-950 text-slate-100"
       }`}
     >
       <Navbar toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden relative">
         <Sidebar isOpen={sidebarOpen} />
 
         <main
-          className={`flex-1 transition-all duration-300 p-4 md:p-6 flex flex-col ${
+          className={`flex-1 transition-all duration-300 p-4 md:p-6 flex flex-col overflow-y-auto ${
             sidebarOpen ? "ml-64" : "ml-20"
           }`}
         >

@@ -138,7 +138,7 @@ export default function UploadPage() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col relative overflow-hidden transition-colors duration-200 ${
+      className={`h-screen flex flex-col relative overflow-hidden transition-colors duration-200 ${
         isLight ? "bg-[#F8F9FA] text-slate-800" : "bg-slate-950 text-slate-100"
       }`}
     >
@@ -156,14 +156,15 @@ export default function UploadPage() {
 
       <Navbar toggleSidebar={() => setIsOpen(!isOpen)} />
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden relative">
         <Sidebar isOpen={isOpen} />
 
-        <div
-          className={`transition-all duration-300 p-6 md:p-8 w-full max-w-5xl mx-auto ${
+        <main
+          className={`transition-all duration-300 p-6 md:p-8 w-full flex-1 overflow-y-auto ${
             isOpen ? "ml-64" : "ml-20"
           }`}
         >
+          <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div
             className={`mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-6 ${
@@ -431,7 +432,8 @@ export default function UploadPage() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
-  );
+  </div>
+);
 }

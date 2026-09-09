@@ -805,7 +805,7 @@ def change_password():
 
         return jsonify({
             "success": True,
-            "message": "Password changed successfully! The new password has been sent to your registered email address."
+            "message": "Password changed successfully!"
         }), 200
 
     except Exception as e:

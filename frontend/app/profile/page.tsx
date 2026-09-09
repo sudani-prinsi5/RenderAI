@@ -61,7 +61,7 @@ export default function Profile() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col relative overflow-hidden transition-colors duration-200 ${
+      className={`h-screen flex flex-col relative overflow-hidden transition-colors duration-200 ${
         isLight ? "bg-[#F8F9FA] text-slate-800" : "bg-slate-950 text-slate-100"
       }`}
     >
@@ -80,22 +80,23 @@ export default function Profile() {
       {/* Navbar */}
       <Navbar toggleSidebar={toggleSidebar} />
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar */}
         <Sidebar isOpen={isOpen} />
 
         {/* Main Content */}
         <main
-          className={`transition-all duration-300 p-6 md:p-8 w-full max-w-5xl mx-auto ${
+          className={`transition-all duration-300 p-6 md:p-8 w-full flex-1 overflow-y-auto ${
             isOpen ? "ml-64" : "ml-20"
           }`}
         >
-          {/* Header */}
-          <div
-            className={`mb-8 border-b pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-              isLight ? "border-slate-200" : "border-slate-800/80"
-            }`}
-          >
+          <div className="max-w-5xl mx-auto">
+            {/* Header */}
+            <div
+              className={`mb-8 border-b pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                isLight ? "border-slate-200" : "border-slate-800/80"
+              }`}
+            >
             <div>
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent flex items-center gap-3">
                 <span>👤</span> User Profile
@@ -226,6 +227,7 @@ export default function Profile() {
                 Sign Out
               </button>
             </div>
+          </div>
           </div>
         </main>
       </div>

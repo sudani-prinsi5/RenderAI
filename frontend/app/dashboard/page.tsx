@@ -62,7 +62,7 @@ export default function Dashboard() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col relative overflow-hidden transition-colors duration-200 ${
+      className={`h-screen flex flex-col relative overflow-hidden transition-colors duration-200 ${
         isLight ? "bg-[#F8F9FA] text-slate-800" : "bg-slate-950 text-slate-100"
       }`}
     >
@@ -81,13 +81,13 @@ export default function Dashboard() {
       {/* Navbar */}
       <Navbar toggleSidebar={toggleSidebar} />
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar */}
         <Sidebar isOpen={isOpen} />
 
         {/* Main Content */}
-        <div
-          className={`transition-all duration-300 p-8 w-full ${
+        <main
+          className={`transition-all duration-300 p-6 md:p-8 w-full flex-1 overflow-y-auto ${
             isOpen ? "ml-64" : "ml-20"
           }`}
         >
@@ -145,7 +145,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

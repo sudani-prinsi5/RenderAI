@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "../context/ThemeContext";
 
 interface SidebarProps {
@@ -15,8 +15,16 @@ interface User {
 
 export default function Sidebar({ isOpen }: SidebarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const { isLight } = useTheme();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    if (pathname && pathname.startsWith("/settings")) {
+      setIsSettingsOpen(true);
+    }
+  }, [pathname]);
 
   // Load logged-in user
   useEffect(() => {
@@ -46,8 +54,17 @@ export default function Sidebar({ isOpen }: SidebarProps) {
     { label: "My Designs", icon: "🖼", path: "/designs" },
     { label: "Statistics", icon: "📊", path: "/statistics" },
     { label: "Profile", icon: "👤", path: "/profile" },
-    { label: "Settings", icon: "⚙", path: "/settings" },
   ];
+
+  const settingsSubItems = [
+    { label: "Change Password", icon: "🔑", path: "/settings?tab=change-password" },
+    { label: "Forgot Password", icon: "🔄", path: "/settings?tab=forgot-password" },
+    { label: "Theme & Display", icon: "🎨", path: "/settings?tab=appearance" },
+  ];
+
+  const toggleSettings = () => {
+    setIsSettingsOpen((prev) => !prev);
+  };
 
   return (
     <div
@@ -101,6 +118,55 @@ export default function Sidebar({ isOpen }: SidebarProps) {
               {isOpen && <span className="text-sm tracking-wide">{item.label}</span>}
             </button>
           ))}
+
+          {/* Expandable Settings Menu */}
+          <div>
+            <button
+              onClick={toggleSettings}
+              className={`w-full px-3.5 py-2.5 rounded-xl text-left transition-all duration-150 flex items-center justify-between cursor-pointer group ${isLight
+                  ? "hover:bg-indigo-50/90 text-slate-700 hover:text-indigo-600 font-medium"
+                  : "hover:bg-slate-900 text-slate-300 hover:text-indigo-400 font-medium"
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg group-hover:scale-110 transition-transform">⚙</span>
+                {isOpen && <span className="text-sm tracking-wide">Settings</span>}
+              </div>
+              {isOpen && (
+                <span
+                  className={`text-xs text-slate-400 group-hover:text-indigo-500 transition-transform duration-200 ${
+                    isSettingsOpen ? "rotate-180" : ""
+                  }`}
+                >
+                  ▼
+                </span>
+              )}
+            </button>
+
+            {/* Settings Submenu */}
+            {isOpen && isSettingsOpen && (
+              <div
+                className={`mt-1 ml-4 pl-3 border-l space-y-1 transition-all duration-200 ${
+                  isLight ? "border-slate-200" : "border-slate-800"
+                }`}
+              >
+                {settingsSubItems.map((subItem) => (
+                  <button
+                    key={subItem.path}
+                    onClick={() => router.push(subItem.path)}
+                    className={`w-full px-3 py-2 rounded-xl text-left transition-all duration-150 flex items-center gap-2.5 cursor-pointer group ${
+                      isLight
+                        ? "hover:bg-indigo-50/90 text-slate-600 hover:text-indigo-600 font-medium text-xs"
+                        : "hover:bg-slate-900 text-slate-400 hover:text-indigo-400 font-medium text-xs"
+                    }`}
+                  >
+                    <span className="text-sm group-hover:scale-110 transition-transform">{subItem.icon}</span>
+                    <span className="truncate">{subItem.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

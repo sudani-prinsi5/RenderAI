@@ -30,7 +30,7 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
 
   return (
     <header
-      className={`border-b px-6 py-3 flex justify-between items-center transition-colors duration-200 sticky top-0 z-40 backdrop-blur-md ${isLight
+      className={`h-16 shrink-0 border-b px-6 flex justify-between items-center transition-colors duration-200 sticky top-0 z-40 backdrop-blur-md ${isLight
         ? "bg-white/90 border-slate-200 shadow-sm"
         : "bg-slate-950/90 border-slate-800/80"
         }`}
