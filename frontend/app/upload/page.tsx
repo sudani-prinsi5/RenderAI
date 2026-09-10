@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import api from "../services/api";
 import { useTheme } from "../context/ThemeContext";
+import { FiUploadCloud } from "react-icons/fi";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -173,7 +174,7 @@ export default function UploadPage() {
           >
             <div>
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent flex items-center gap-3">
-                <span>📤</span> Upload Room Image
+                <FiUploadCloud className="w-8 h-8 text-indigo-500 shrink-0" /> Upload Room Image
               </h1>
               <p className={`text-sm mt-1 ${isLight ? "text-slate-500" : "text-slate-400"}`}>
                 Upload a photo of your empty room or existing layout and enter room dimensions.

@@ -22,6 +22,7 @@ import {
   FiAlertTriangle,
   FiMove,
   FiEye,
+  FiMessageSquare,
 } from "react-icons/fi";
 
 const API_BASE = "http://127.0.0.1:5000";
@@ -930,8 +931,8 @@ export default function ChatPage() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center text-xl text-white shadow-lg">
-                🤖
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
+                <FiMessageSquare className="w-6 h-6 text-white" />
               </div>
               <div>
                 <div className="flex items-center gap-2">

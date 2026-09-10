@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { useTheme } from "../context/ThemeContext";
+import { FiUser } from "react-icons/fi";
 
 interface UserProfile {
   user_id?: number;
@@ -99,7 +100,7 @@ export default function Profile() {
             >
             <div>
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent flex items-center gap-3">
-                <span>👤</span> User Profile
+                <FiUser className="w-8 h-8 text-indigo-500 shrink-0" /> User Profile
               </h1>
             </div>
 

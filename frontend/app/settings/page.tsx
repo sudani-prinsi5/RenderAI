@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import api from "../services/api";
 import { useTheme } from "../context/ThemeContext";
+import { FiKey, FiRefreshCw, FiSun } from "react-icons/fi";
 
 interface UserProfile {
   user_id?: number;
@@ -304,7 +305,7 @@ function SettingsContent() {
               {currentSection === "change-password" && (
                 <>
                   <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent flex items-center gap-3">
-                    <span>🔑</span> Change Password
+                    <FiKey className="w-8 h-8 text-indigo-500 shrink-0" /> Change Password
                   </h1>
                   <p className={`text-sm mt-1 ${isLight ? "text-slate-500" : "text-slate-400"}`}>
                     Update your account password with security verification.
@@ -314,7 +315,7 @@ function SettingsContent() {
               {currentSection === "forgot-password" && (
                 <>
                   <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent flex items-center gap-3">
-                    <span>🔄</span> Forgot Password
+                    <FiRefreshCw className="w-8 h-8 text-indigo-500 shrink-0" /> Forgot Password
                   </h1>
                   <p className={`text-sm mt-1 ${isLight ? "text-slate-500" : "text-slate-400"}`}>
                     Reset your account password securely via email verification OTP.
@@ -324,7 +325,7 @@ function SettingsContent() {
               {currentSection === "appearance" && (
                 <>
                   <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent flex items-center gap-3">
-                    <span>🎨</span> Theme & Display
+                    <FiSun className="w-8 h-8 text-indigo-500 shrink-0" /> Theme & Display
                   </h1>
                   <p className={`text-sm mt-1 ${isLight ? "text-slate-500" : "text-slate-400"}`}>
                     Customize your interface theme between Daylight Light and Midnight Dark.
@@ -357,8 +358,8 @@ function SettingsContent() {
                   }`}
               >
                 <div className={`border-b pb-4 ${isLight ? "border-slate-200" : "border-slate-800"}`}>
-                  <h2 className={`text-xl font-bold flex items-center gap-2 ${isLight ? "text-slate-800" : "text-slate-100"}`}>
-                    <span>🔑</span> Change Account Password
+                  <h2 className={`text-xl font-bold flex items-center gap-2.5 ${isLight ? "text-slate-800" : "text-slate-100"}`}>
+                    <FiKey className="w-5 h-5 text-indigo-500 shrink-0" /> Change Account Password
                   </h2>
                 </div>
 
@@ -498,8 +499,8 @@ function SettingsContent() {
                   }`}
               >
                 <div className={`border-b pb-4 ${isLight ? "border-slate-200" : "border-slate-800"}`}>
-                  <h2 className={`text-xl font-bold flex items-center gap-2 ${isLight ? "text-slate-800" : "text-slate-100"}`}>
-                    <span>🔄</span> Reset Password via Email Verification
+                  <h2 className={`text-xl font-bold flex items-center gap-2.5 ${isLight ? "text-slate-800" : "text-slate-100"}`}>
+                    <FiRefreshCw className="w-5 h-5 text-indigo-500 shrink-0" /> Reset Password via Email Verification
                   </h2>
                 </div>
 
@@ -754,8 +755,8 @@ function SettingsContent() {
                   }`}
               >
                 <div className={`border-b pb-4 ${isLight ? "border-slate-200" : "border-slate-800"}`}>
-                  <h2 className={`text-xl font-bold flex items-center gap-2 ${isLight ? "text-slate-800" : "text-slate-100"}`}>
-                    <span>🎨</span> Theme & Appearance
+                  <h2 className={`text-xl font-bold flex items-center gap-2.5 ${isLight ? "text-slate-800" : "text-slate-100"}`}>
+                    <FiSun className="w-5 h-5 text-indigo-500 shrink-0" /> Theme & Appearance
                   </h2>
                 </div>
 

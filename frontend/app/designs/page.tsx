@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import api from "../services/api";
 import { useTheme } from "../context/ThemeContext";
+import { FiLayers } from "react-icons/fi";
 
 const API_BASE = "http://127.0.0.1:5000";
 
@@ -125,7 +126,7 @@ export default function DesignsPage() {
             >
             <div>
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent flex items-center gap-3">
-                <span>🖼️</span> My Designs
+                <FiLayers className="w-8 h-8 text-indigo-500 shrink-0" /> My Designs
               </h1>
               <p className={`text-sm mt-1 ${isLight ? "text-slate-500" : "text-slate-400"}`}>
                 All saved room transformations, dimensions, and generated furniture layouts.

@@ -6,6 +6,7 @@ import api from "../services/api";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { useTheme } from "../context/ThemeContext";
+import { FiBarChart2 } from "react-icons/fi";
 
 interface StatisticsData {
   total_rooms: number;
@@ -103,7 +104,7 @@ export default function StatisticsPage() {
             >
             <div>
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent flex items-center gap-3">
-                <span>📊</span> Project Statistics
+                <FiBarChart2 className="w-8 h-8 text-indigo-500 shrink-0" /> Project Statistics
               </h1>
               <p className={`text-sm mt-1 ${isLight ? "text-slate-500" : "text-slate-400"}`}>
                 Usage telemetry and AI design analytics for your account.
