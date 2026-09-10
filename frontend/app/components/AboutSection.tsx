@@ -39,11 +39,10 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
           SECTION 1 — HERO / INTRODUCTION
           ========================================================================= */}
       <section
-        className={`py-20 lg:py-28 px-6 lg:px-12 border-t transition-colors duration-200 ${
-          isLight
-            ? "bg-[#FAF9F6] text-stone-900 border-stone-200/80"
-            : "bg-[#0B0F17] text-slate-100 border-slate-800/80"
-        }`}
+        className={`py-20 lg:py-28 px-6 lg:px-12 border-t transition-colors duration-200 ${isLight
+          ? "bg-[#FAF9F6] text-stone-900 border-stone-200/80"
+          : "bg-[#0B0F17] text-slate-100 border-slate-800/80"
+          }`}
       >
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
@@ -52,17 +51,15 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
 
 
               <h1
-                className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.18] ${
-                  isLight ? "text-stone-900" : "text-white"
-                }`}
+                className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.18] ${isLight ? "text-stone-900" : "text-white"
+                  }`}
               >
                 Making Interior Design Easier to Visualize
               </h1>
 
               <div
-                className={`space-y-4 text-base sm:text-lg leading-relaxed ${
-                  isLight ? "text-stone-600" : "text-slate-300"
-                }`}
+                className={`space-y-4 text-base sm:text-lg leading-relaxed ${isLight ? "text-stone-600" : "text-slate-300"
+                  }`}
               >
                 <p>
                   Designing a room is not always easy. Choosing the right furniture, deciding where everything should go, and imagining how the final space will look can take time and effort.
@@ -77,29 +74,26 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
 
               <div className="pt-2 flex flex-wrap items-center gap-3 text-xs font-medium">
                 <span
-                  className={`px-3 py-1.5 rounded-lg border ${
-                    isLight
-                      ? "bg-white text-stone-700 border-stone-200"
-                      : "bg-slate-900/80 text-slate-300 border-slate-800"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg border ${isLight
+                    ? "bg-white text-stone-700 border-stone-200"
+                    : "bg-slate-900/80 text-slate-300 border-slate-800"
+                    }`}
                 >
                   ✓ Preserves Room Architecture
                 </span>
                 <span
-                  className={`px-3 py-1.5 rounded-lg border ${
-                    isLight
-                      ? "bg-white text-stone-700 border-stone-200"
-                      : "bg-slate-900/80 text-slate-300 border-slate-800"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg border ${isLight
+                    ? "bg-white text-stone-700 border-stone-200"
+                    : "bg-slate-900/80 text-slate-300 border-slate-800"
+                    }`}
                 >
                   ✓ Spatial Awareness
                 </span>
                 <span
-                  className={`px-3 py-1.5 rounded-lg border ${
-                    isLight
-                      ? "bg-white text-stone-700 border-stone-200"
-                      : "bg-slate-900/80 text-slate-300 border-slate-800"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg border ${isLight
+                    ? "bg-white text-stone-700 border-stone-200"
+                    : "bg-slate-900/80 text-slate-300 border-slate-800"
+                    }`}
                 >
                   ✓ Realistic Visualizations
                 </span>
@@ -109,11 +103,10 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
             {/* Right Visual Column */}
             <div className="lg:col-span-6 relative">
               <div
-                className={`relative rounded-2xl lg:rounded-3xl overflow-hidden border shadow-xl ${
-                  isLight
-                    ? "border-stone-200/90 shadow-stone-200/50 bg-white"
-                    : "border-slate-800 shadow-black/40 bg-slate-900"
-                }`}
+                className={`relative rounded-2xl lg:rounded-3xl overflow-hidden border shadow-xl ${isLight
+                  ? "border-stone-200/90 shadow-stone-200/50 bg-white"
+                  : "border-slate-800 shadow-black/40 bg-slate-900"
+                  }`}
               >
                 <Image
                   src="/about/hero_livingroom.jpg"
@@ -133,25 +126,23 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
           SECTION 2 — OUR STORY
           ========================================================================= */}
       <section
-        className={`py-20 lg:py-28 px-6 lg:px-12 border-t transition-colors duration-200 ${
-          isLight
-            ? "bg-white text-stone-900 border-stone-200/80"
-            : "bg-slate-950 text-slate-100 border-slate-800/80"
-        }`}
+        className={`py-20 lg:py-28 px-6 lg:px-12 border-t transition-colors duration-200 ${isLight
+          ? "bg-white text-stone-900 border-stone-200/80"
+          : "bg-slate-950 text-slate-100 border-slate-800/80"
+          }`}
       >
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
             {/* Left Visual Column */}
             <div className="lg:col-span-6 order-2 lg:order-1 relative">
               <div
-                className={`relative rounded-2xl lg:rounded-3xl overflow-hidden border shadow-xl ${
-                  isLight
-                    ? "border-stone-200/90 shadow-stone-200/50 bg-stone-50"
-                    : "border-slate-800 shadow-black/40 bg-slate-900"
-                }`}
+                className={`relative rounded-2xl lg:rounded-3xl overflow-hidden border shadow-xl ${isLight
+                  ? "border-stone-200/90 shadow-stone-200/50 bg-stone-50"
+                  : "border-slate-800 shadow-black/40 bg-slate-900"
+                  }`}
               >
                 <Image
-                  src="/about/story_laptop.jpg"
+                  src="/about/story_laptop.png"
                   alt="Designer planning an interior concept with material moodboards and 3D room visualization"
                   width={1200}
                   height={900}
@@ -165,27 +156,24 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
 
 
               <h2
-                className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.18] ${
-                  isLight ? "text-stone-900" : "text-white"
-                }`}
+                className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.18] ${isLight ? "text-stone-900" : "text-white"
+                  }`}
               >
                 It Started with a Simple Problem
               </h2>
 
               <div
-                className={`space-y-4 text-base sm:text-lg leading-relaxed ${
-                  isLight ? "text-stone-600" : "text-slate-300"
-                }`}
+                className={`space-y-4 text-base sm:text-lg leading-relaxed ${isLight ? "text-stone-600" : "text-slate-300"
+                  }`}
               >
                 <p>We started with a simple question:</p>
 
                 {/* Highlighted Quote Callout */}
                 <blockquote
-                  className={`p-5 rounded-2xl border-l-4 my-4 font-medium italic text-lg sm:text-xl leading-snug transition-colors ${
-                    isLight
-                      ? "bg-stone-50 border-amber-600 text-stone-800"
-                      : "bg-slate-900/80 border-amber-500 text-slate-100"
-                  }`}
+                  className={`p-5 rounded-2xl border-l-4 my-4 font-medium italic text-lg sm:text-xl leading-snug transition-colors ${isLight
+                    ? "bg-stone-50 border-amber-600 text-stone-800"
+                    : "bg-slate-900/80 border-amber-500 text-slate-100"
+                    }`}
                 >
                   &ldquo;Can technology make it easier to visualize the room we already have?&rdquo;
                 </blockquote>
@@ -211,29 +199,26 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
           SECTION 3 — WHY WE BUILT RENDERAI (BEFORE / AFTER)
           ========================================================================= */}
       <section
-        className={`py-20 lg:py-28 px-6 lg:px-12 border-t transition-colors duration-200 ${
-          isLight
-            ? "bg-[#FAF9F6] text-stone-900 border-stone-200/80"
-            : "bg-[#0B0F17] text-slate-100 border-slate-800/80"
-        }`}
+        className={`py-20 lg:py-28 px-6 lg:px-12 border-t transition-colors duration-200 ${isLight
+          ? "bg-[#FAF9F6] text-stone-900 border-stone-200/80"
+          : "bg-[#0B0F17] text-slate-100 border-slate-800/80"
+          }`}
       >
         <div className="max-w-7xl mx-auto space-y-14">
           {/* Section Header */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-6 space-y-4">
               <h2
-                className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.18] ${
-                  isLight ? "text-stone-900" : "text-white"
-                }`}
+                className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.18] ${isLight ? "text-stone-900" : "text-white"
+                  }`}
               >
                 Every Room Has Possibilities
               </h2>
             </div>
 
             <div
-              className={`lg:col-span-6 space-y-4 text-base sm:text-lg leading-relaxed ${
-                isLight ? "text-stone-600" : "text-slate-300"
-              }`}
+              className={`lg:col-span-6 space-y-4 text-base sm:text-lg leading-relaxed ${isLight ? "text-stone-600" : "text-slate-300"
+                }`}
             >
               <p>
                 We believe people should be able to explore interior design ideas without needing to be an interior design expert.
@@ -264,29 +249,27 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
             <div className="inline-flex p-1 rounded-xl border bg-stone-100/70 dark:bg-slate-900 border-stone-200 dark:border-slate-800 text-xs font-medium">
               <button
                 onClick={() => setActiveTab("side-by-side")}
-                className={`px-3 py-1.5 rounded-lg transition ${
-                  activeTab === "side-by-side"
-                    ? isLight
-                      ? "bg-white text-stone-900 shadow-sm font-semibold"
-                      : "bg-slate-800 text-white shadow-sm font-semibold"
-                    : isLight
+                className={`px-3 py-1.5 rounded-lg transition ${activeTab === "side-by-side"
+                  ? isLight
+                    ? "bg-white text-stone-900 shadow-sm font-semibold"
+                    : "bg-slate-800 text-white shadow-sm font-semibold"
+                  : isLight
                     ? "text-stone-600 hover:text-stone-900"
                     : "text-slate-400 hover:text-white"
-                }`}
+                  }`}
               >
                 Side by Side
               </button>
               <button
                 onClick={() => setActiveTab("interactive")}
-                className={`px-3 py-1.5 rounded-lg transition ${
-                  activeTab === "interactive"
-                    ? isLight
-                      ? "bg-white text-stone-900 shadow-sm font-semibold"
-                      : "bg-slate-800 text-white shadow-sm font-semibold"
-                    : isLight
+                className={`px-3 py-1.5 rounded-lg transition ${activeTab === "interactive"
+                  ? isLight
+                    ? "bg-white text-stone-900 shadow-sm font-semibold"
+                    : "bg-slate-800 text-white shadow-sm font-semibold"
+                  : isLight
                     ? "text-stone-600 hover:text-stone-900"
                     : "text-slate-400 hover:text-white"
-                }`}
+                  }`}
               >
                 Interactive Slider
               </button>
@@ -298,15 +281,14 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
             <div className="relative grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 items-stretch">
               {/* LEFT: Before Card */}
               <div
-                className={`relative rounded-2xl lg:rounded-3xl overflow-hidden border shadow-lg flex flex-col justify-between ${
-                  isLight
-                    ? "border-stone-200/90 shadow-stone-200/50 bg-stone-50"
-                    : "border-slate-800 shadow-black/40 bg-slate-900"
-                }`}
+                className={`relative rounded-2xl lg:rounded-3xl overflow-hidden border shadow-lg flex flex-col justify-between ${isLight
+                  ? "border-stone-200/90 shadow-stone-200/50 bg-stone-50"
+                  : "border-slate-800 shadow-black/40 bg-slate-900"
+                  }`}
               >
                 <div className="relative w-full aspect-[4/3] overflow-hidden">
                   <Image
-                    src="/about/empty_room.jpg"
+                    src="/about/empty_roomm.jpg"
                     alt="Before: An empty room with original walls and windows before redesign"
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
@@ -315,11 +297,10 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
                   {/* Before Badge */}
                   <div className="absolute top-4 left-4">
                     <span
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md border ${
-                        isLight
-                          ? "bg-stone-900/80 text-white border-white/20"
-                          : "bg-black/70 text-slate-100 border-white/10"
-                      }`}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md border ${isLight
+                        ? "bg-stone-900/80 text-white border-white/20"
+                        : "bg-black/70 text-slate-100 border-white/10"
+                        }`}
                     >
                       Before
                     </span>
@@ -339,11 +320,10 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
               {/* Central Arrow/Transition Badge for Desktop */}
               <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none items-center justify-center">
                 <div
-                  className={`w-14 h-14 rounded-full border shadow-2xl flex items-center justify-center transition-transform duration-300 hover:scale-110 ${
-                    isLight
-                      ? "bg-white border-stone-300 text-stone-900 shadow-stone-400/30"
-                      : "bg-slate-900 border-slate-700 text-amber-400 shadow-black/80"
-                  }`}
+                  className={`w-14 h-14 rounded-full border shadow-2xl flex items-center justify-center transition-transform duration-300 hover:scale-110 ${isLight
+                    ? "bg-white border-stone-300 text-stone-900 shadow-stone-400/30"
+                    : "bg-slate-900 border-slate-700 text-amber-400 shadow-black/80"
+                    }`}
                 >
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -353,15 +333,14 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
 
               {/* RIGHT: After Card */}
               <div
-                className={`relative rounded-2xl lg:rounded-3xl overflow-hidden border shadow-lg flex flex-col justify-between ${
-                  isLight
-                    ? "border-stone-200/90 shadow-stone-200/50 bg-stone-50"
-                    : "border-slate-800 shadow-black/40 bg-slate-900"
-                }`}
+                className={`relative rounded-2xl lg:rounded-3xl overflow-hidden border shadow-lg flex flex-col justify-between ${isLight
+                  ? "border-stone-200/90 shadow-stone-200/50 bg-stone-50"
+                  : "border-slate-800 shadow-black/40 bg-slate-900"
+                  }`}
               >
                 <div className="relative w-full aspect-[4/3] overflow-hidden">
                   <Image
-                    src="/about/furnished_room.jpg"
+                    src="/about/furniture_image.jpg"
                     alt="After: The same room redesigned with realistic furniture, lighting, and interior styling"
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
@@ -370,11 +349,10 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
                   {/* After Badge */}
                   <div className="absolute top-4 left-4">
                     <span
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md border ${
-                        isLight
-                          ? "bg-amber-700/90 text-white border-amber-500/30"
-                          : "bg-amber-600/90 text-white border-amber-400/30"
-                      }`}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md border ${isLight
+                        ? "bg-amber-700/90 text-white border-amber-500/30"
+                        : "bg-amber-600/90 text-white border-amber-400/30"
+                        }`}
                     >
                       After — Redesigned
                     </span>
@@ -394,9 +372,8 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
           ) : (
             /* Interactive Split Comparison Slider */
             <div
-              className={`relative rounded-2xl lg:rounded-3xl overflow-hidden border shadow-2xl select-none cursor-ew-resize aspect-[16/9] max-h-[560px] w-full ${
-                isLight ? "border-stone-200 bg-stone-100" : "border-slate-800 bg-slate-900"
-              }`}
+              className={`relative rounded-2xl lg:rounded-3xl overflow-hidden border shadow-2xl select-none cursor-ew-resize aspect-[16/9] max-h-[560px] w-full ${isLight ? "border-stone-200 bg-stone-100" : "border-slate-800 bg-slate-900"
+                }`}
               onMouseMove={handleMouseMove}
               onMouseDown={() => setIsDragging(true)}
               onMouseUp={() => setIsDragging(false)}
@@ -405,7 +382,7 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
               {/* "After" Image (Background) */}
               <div className="absolute inset-0 w-full h-full">
                 <Image
-                  src="/about/furnished_room.jpg"
+                  src="/about/furniture_image.jpg"
                   alt="Redesigned Room"
                   fill
                   sizes="100vw"
@@ -425,7 +402,7 @@ export default function AboutSection({ isLoggedIn = false }: AboutSectionProps) 
                 style={{ clipPath: `polygon(0 0, ${sliderPos}% 0, ${sliderPos}% 100%, 0 100%)` }}
               >
                 <Image
-                  src="/about/empty_room.jpg"
+                  src="/about/empty_roomm.jpg"
                   alt="Original Room"
                   fill
                   sizes="100vw"
