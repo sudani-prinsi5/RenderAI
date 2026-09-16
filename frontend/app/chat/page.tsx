@@ -153,18 +153,21 @@ export default function ChatPage() {
         // Restore placed items if present
         if (data.furniture_state && Array.isArray(data.furniture_state) && data.furniture_state.length > 0) {
           const loadedPlaced: PlacedItem[] = data.furniture_state.map((it: any, idx: number) => ({
-            id: it.id || `item_${idx}`,
+            id: String(it.id || `item_${idx}`),
+            datasetId: it.datasetId,
             name: it.name || "furniture",
             label: it.label || it.name || "Furniture Piece",
             category: it.category || it.name || "bed",
             price: Number(it.price) || 15000,
             image_url: it.image_url || "/furniture_dataset/bed/buget_10k/bed1.jpeg",
-            pos_x: it.pos_x ?? (50 + (idx === 0 ? 0 : idx * 15 - 15)),
-            pos_y: it.pos_y ?? (60 + (idx === 0 ? 0 : idx * 5)),
-            scale: it.scale || 1.0,
+            pos_x: Number(it.pos_x ?? (50 + (idx === 0 ? 0 : idx * 15 - 15))),
+            pos_y: Number(it.pos_y ?? (60 + (idx === 0 ? 0 : idx * 5))),
+            scale: Number(it.scale || 1.0),
             dimensions: it.dimensions || { length_ft: it.length_ft || 6.5, width_ft: it.width_ft || 5.0 },
           }));
           setPlacedItems(loadedPlaced);
+        } else {
+          setPlacedItems([]);
         }
 
         // Initialize natural AI interior designer conversation
@@ -280,12 +283,13 @@ export default function ChatPage() {
 
   // STEP 5 & 6: Drag & Drop / Click Placement onto Room Canvas
   // CRITICAL: Places ONLY the selected single furniture item!
-  const handlePlaceFurnitureItem = (item: DatasetFurnitureItem, posX?: number, posY?: number) => {
+  const handlePlaceFurnitureItem = async (item: DatasetFurnitureItem, posX?: number, posY?: number) => {
     const dropX = posX ?? 50;
     const dropY = posY ?? 60;
+    const uniqueItemId = `item_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
     const newPlacedItem: PlacedItem = {
-      id: `${item.category}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      id: uniqueItemId,
       datasetId: item.id,
       name: item.name,
       label: item.label,
@@ -298,9 +302,8 @@ export default function ChatPage() {
       dimensions: item.dimensions,
     };
 
-    // Update canvas state with only this added item
-    const updatedPlaced = [...placedItems, newPlacedItem];
-    setPlacedItems(updatedPlaced);
+    // Update canvas state immediately with only this added item
+    setPlacedItems((prev) => [...prev, newPlacedItem]);
 
     // Continue the AI conversation naturally
     const nextCategories = DATASET_CATEGORIES.filter((c) => c.key !== item.category).map((c) => c.key);
@@ -314,28 +317,42 @@ export default function ChatPage() {
       timestamp: new Date().toISOString(),
       step: "item_placed",
       suggestedCategories: nextCategories.slice(0, 3),
-      placedItemId: newPlacedItem.id,
+      placedItemId: uniqueItemId,
     };
 
     setMessages((prev) => [...prev, confirmationMsg]);
 
-    // Sync with backend /chat/add-product if room exists
+    // Sync and persist to backend database
     if (room?.room_id) {
-      api
-        .post("/chat/add-product", {
+      try {
+        const res = await api.post("/chat/add-product", {
           room_id: room.room_id,
           user_id: getUserId(),
+          item_id: uniqueItemId,
           product: {
+            id: uniqueItemId,
+            datasetId: item.id,
             title: item.label,
+            label: item.label,
             category: item.category,
             price: item.price,
             image_url: item.image_url,
             dimensions: item.dimensions,
+            scale: 1.0,
           },
           pos_x: dropX,
           pos_y: dropY,
-        })
-        .catch((err) => console.log("Background sync note:", err));
+        });
+
+        if (res.data?.added_item?.id && res.data.added_item.id !== uniqueItemId) {
+          const backendId = String(res.data.added_item.id);
+          setPlacedItems((prev) =>
+            prev.map((it) => (it.id === uniqueItemId ? { ...it, id: backendId } : it))
+          );
+        }
+      } catch (err) {
+        console.error("Failed to persist added furniture item in backend:", err);
+      }
     }
   };
 
@@ -353,28 +370,71 @@ export default function ChatPage() {
     );
   };
 
-  // Remove individual placed item
-  const handleRemoveItem = (id: string) => {
+  // Remove individual placed item permanently
+  const handleRemoveItem = async (id: string) => {
     const itemToRemove = placedItems.find((it) => it.id === id);
+    if (!itemToRemove) return;
+
+    // Optimistic UI update
     setPlacedItems((prev) => prev.filter((it) => it.id !== id));
 
-    if (itemToRemove) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `ai_remove_${Date.now()}`,
-          sender: "AI",
-          text: `Removed **${itemToRemove.label}** from the room workspace.`,
-          timestamp: new Date().toISOString(),
-          step: "custom",
-        },
-      ]);
+    // Persist deletion permanently to backend database
+    if (room?.room_id) {
+      try {
+        const res = await api.post("/chat/remove-product", {
+          room_id: room.room_id,
+          user_id: getUserId(),
+          item_id: id,
+        });
+
+        if (!res.data || res.data.success === false) {
+          throw new Error(res.data?.message || "Failed to delete item from room in database");
+        }
+      } catch (err: any) {
+        console.error("Failed to persist deletion:", err);
+        // Rollback state if backend deletion failed
+        setPlacedItems((prev) => [...prev, itemToRemove]);
+        alert("Failed to delete item from room design. Please try again.");
+        return;
+      }
     }
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `ai_remove_${Date.now()}`,
+        sender: "AI",
+        text: `Removed **${itemToRemove.label}** from the room workspace.`,
+        timestamp: new Date().toISOString(),
+        step: "custom",
+      },
+    ]);
   };
 
-  // Clear all placed items
-  const handleClearAllItems = () => {
+  // Clear all placed items permanently
+  const handleClearAllItems = async () => {
+    const previousItems = [...placedItems];
     setPlacedItems([]);
+
+    if (room?.room_id) {
+      try {
+        const res = await api.post("/chat/remove-product", {
+          room_id: room.room_id,
+          user_id: getUserId(),
+          item_id: "all",
+        });
+
+        if (!res.data || res.data.success === false) {
+          throw new Error(res.data?.message || "Failed to reset room furniture in database");
+        }
+      } catch (err) {
+        console.error("Failed to reset furniture in backend:", err);
+        setPlacedItems(previousItems);
+        alert("Failed to reset room furniture. Please try again.");
+        return;
+      }
+    }
+
     setMessages((prev) => [
       ...prev,
       {

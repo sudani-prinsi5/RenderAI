@@ -445,17 +445,18 @@ def add_product():
             product.get("category"), furniture_state, pos_x, pos_y
         )
 
-        item_id = f"{product.get('category', 'item')}_{str(uuid.uuid4())[:6]}"
-        dim = product.get("dimensions", {})
+        item_id = data.get("item_id") or (product_data.get("id") if isinstance(product_data, dict) else None) or f"{product.get('category', 'item')}_{str(uuid.uuid4())[:6]}"
+        dim = product.get("dimensions", {}) if isinstance(product.get("dimensions"), dict) else {}
         length_ft = dim.get("length_ft", 4.0)
         width_ft = dim.get("width_ft", 2.5)
         height_ft = dim.get("height_ft", 3.0)
 
         new_item = {
             "id": item_id,
+            "datasetId": product.get("datasetId") or product.get("id"),
             "asin": product.get("asin", ""),
             "name": product.get("category", "furniture"),
-            "label": product.get("title", "Amazon Product"),
+            "label": product.get("label") or product.get("title", "Furniture Piece"),
             "size": product.get("sub_category", "standard"),
             "color": product.get("color", "Standard"),
             "length_ft": length_ft,
@@ -468,6 +469,7 @@ def add_product():
             "position": placement_desc,
             "pos_x": calc_x,
             "pos_y": calc_y,
+            "scale": float(product_data.get("scale", 1.0)) if isinstance(product_data, dict) and "scale" in product_data else 1.0,
             "description": product.get("description", ""),
         }
 
@@ -688,7 +690,14 @@ def remove_product():
         furniture_state = _load_json(room.furniture_state, [])
         user_budget = room.budget or 50000.0
 
-        new_state = [it for it in furniture_state if it.get("id") != item_id]
+        if item_id == "all":
+            new_state = []
+        else:
+            str_id = str(item_id).strip() if item_id else ""
+            new_state = [
+                it for it in furniture_state
+                if str(it.get("id", "")).strip() != str_id and str(it.get("datasetId", "")).strip() != str_id
+            ]
         room.furniture_state = json.dumps(new_state)
 
         # Regenerate room image or clear if empty
