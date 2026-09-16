@@ -1,0 +1,242 @@
+import os
+import hashlib
+import cv2
+import numpy as np
+import urllib.request
+from ultralytics import YOLO
+
+# Resolved paths
+BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
+UPLOAD_FOLDER = os.path.join(ROOT_DIR, "uploads")
+if not os.path.exists(UPLOAD_FOLDER):
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+
+EXTRACTED_FOLDER = os.path.join(UPLOAD_FOLDER, "extracted_objects")
+os.makedirs(EXTRACTED_FOLDER, exist_ok=True)
+
+MODEL_PATH = os.path.join(BASE_DIR, "yolov8n-seg.pt")
+if not os.path.exists(MODEL_PATH):
+    MODEL_PATH = os.path.join(ROOT_DIR, "yolov8n-seg.pt")
+if not os.path.exists(MODEL_PATH):
+    MODEL_PATH = "yolov8n-seg.pt"
+
+_seg_model = None
+
+def get_seg_model():
+    global _seg_model
+    if _seg_model is None:
+        try:
+            _seg_model = YOLO(MODEL_PATH)
+        except Exception as e:
+            print(f"Error loading YOLOv8-seg model ({MODEL_PATH}): {e}")
+            try:
+                _seg_model = YOLO("yolov8n.pt")
+            except Exception as e2:
+                print(f"Error loading fallback YOLOv8n: {e2}")
+    return _seg_model
+
+
+CATEGORY_SYNONYMS = {
+    "bed": ["bed"],
+    "chair": ["chair", "couch", "bench"],
+    "sofa": ["couch", "sofa", "chair"],
+    "couch": ["couch", "sofa", "chair"],
+    "table": ["dining table", "table", "desk"],
+    "side table": ["dining table", "table", "desk"],
+    "nightstand": ["dining table", "table", "desk"],
+    "desk": ["dining table", "desk", "table", "laptop"],
+    "lamp": ["lamp", "vase", "clock", "potted plant", "traffic light"],
+    "night lamp": ["lamp", "vase", "clock", "potted plant", "traffic light"],
+    "wardrobe": ["refrigerator", "bed", "wardrobe"],
+    "tv": ["tv", "monitor", "laptop"],
+}
+
+
+def _resolve_image(source_path_or_url):
+    """Load image from local path or remote URL into OpenCV BGR numpy array."""
+    if not source_path_or_url:
+        return None
+
+    src = source_path_or_url.strip()
+
+    # Remote URL
+    if src.startswith("http://") or src.startswith("https://"):
+        try:
+            req = urllib.request.Request(
+                src,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                arr = np.asarray(bytearray(resp.read()), dtype=np.uint8)
+                img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+                if img is not None:
+                    return img
+        except Exception as e:
+            print(f"Warning: Failed to fetch remote image {src}: {e}")
+
+    # Local Path resolving
+    possible_paths = []
+    
+    # Clean leading slash
+    rel_src = src.lstrip("/\\")
+
+    # 1. Direct path
+    possible_paths.append(src)
+    # 2. Relative to ROOT_DIR
+    possible_paths.append(os.path.join(ROOT_DIR, rel_src))
+    # 3. Relative to BASE_DIR
+    possible_paths.append(os.path.join(BASE_DIR, rel_src))
+    # 4. If path starts with furniture_dataset
+    if "furniture_dataset" in rel_src:
+        sub = rel_src[rel_src.find("furniture_dataset"):]
+        possible_paths.append(os.path.join(ROOT_DIR, sub))
+        possible_paths.append(os.path.join(ROOT_DIR, "frontend", "public", sub))
+    # 5. If path starts with uploads
+    if "uploads" in rel_src:
+        sub = rel_src[rel_src.find("uploads"):]
+        possible_paths.append(os.path.join(ROOT_DIR, sub))
+    # 6. If path is in assets
+    possible_paths.append(os.path.join(BASE_DIR, "assets", os.path.basename(src)))
+
+    for p in possible_paths:
+        if os.path.exists(p) and os.path.isfile(p):
+            img = cv2.imread(p, cv2.IMREAD_COLOR)
+            if img is not None:
+                return img
+
+    return None
+
+
+def extract_and_segment_object(image_source, category="bed", force_refresh=False):
+    """
+    Extract ONLY the requested furniture object (e.g. Bed, Lamp, Chair, Sofa) from the source image.
+    Returns the web URL path of the transparent RGBA PNG in /uploads/extracted_objects/.
+    """
+    if not image_source:
+        return None
+
+    cat_clean = (category or "bed").lower().strip()
+
+    # Generate deterministic cache filename
+    hash_key = hashlib.md5(f"{image_source}::{cat_clean}".encode("utf-8")).hexdigest()
+    cache_filename = f"extracted_{cat_clean}_{hash_key[:12]}.png"
+    cache_path = os.path.join(EXTRACTED_FOLDER, cache_filename)
+    web_path = f"/uploads/extracted_objects/{cache_filename}"
+
+    if not force_refresh and os.path.exists(cache_path) and os.path.getsize(cache_path) > 100:
+        return web_path
+
+    img = _resolve_image(image_source)
+    if img is None:
+        return image_source  # Fallback to original if cannot load
+
+    h, w = img.shape[:2]
+    model = get_seg_model()
+
+    target_synonyms = CATEGORY_SYNONYMS.get(cat_clean, [cat_clean])
+
+    best_idx = None
+    best_conf = 0.0
+    res = None
+
+    if model is not None:
+        try:
+            results = model(img, conf=0.10, verbose=False)
+            if results and len(results) > 0:
+                res = results[0]
+        except Exception as e:
+            print(f"Detection inference error: {e}")
+
+    # 1. Search for matching category among detections
+    if res is not None and res.boxes is not None and len(res.boxes) > 0:
+        for i, box in enumerate(res.boxes):
+            cls_id = int(box.cls[0])
+            cls_name = model.names.get(cls_id, "").lower() if hasattr(model, "names") else ""
+            conf = float(box.conf[0])
+            if any(s in cls_name or cls_name in s for s in target_synonyms):
+                if conf > best_conf:
+                    best_conf = conf
+                    best_idx = i
+
+    # 2. If no exact category match, choose largest salient object
+    if best_idx is None and res is not None and res.boxes is not None and len(res.boxes) > 0:
+        areas = []
+        for i, box in enumerate(res.boxes):
+            xyxy = box.xyxy[0].cpu().numpy()
+            area = (xyxy[2] - xyxy[0]) * (xyxy[3] - xyxy[1])
+            areas.append((area, float(box.conf[0]), i))
+        areas.sort(reverse=True)
+        best_idx = areas[0][2]
+
+    rgba = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+
+    # 3. Apply Segmentation Mask if available
+    if best_idx is not None and res is not None and getattr(res, "masks", None) is not None and len(res.masks) > best_idx:
+        try:
+            mask_raw = res.masks.data[best_idx].cpu().numpy()
+            mask_resized = cv2.resize(mask_raw, (w, h), interpolation=cv2.INTER_LINEAR)
+            alpha = (mask_resized > 0.35).astype(np.uint8) * 255
+            
+            # Smooth mask edges for natural feathering
+            alpha = cv2.GaussianBlur(alpha, (5, 5), 0)
+            rgba[:, :, 3] = alpha
+
+            box = res.boxes[best_idx].xyxy[0].cpu().numpy().astype(int)
+            pad = 8
+            x1, y1 = max(0, box[0] - pad), max(0, box[1] - pad)
+            x2, y2 = min(w, box[2] + pad), min(h, box[3] + pad)
+            cropped = rgba[y1:y2, x1:x2]
+        except Exception as e:
+            print(f"Mask application error: {e}")
+            cropped = None
+    else:
+        cropped = None
+
+    # 4. Fallback: Bounding box GrabCut segmentation
+    if cropped is None and best_idx is not None and res is not None and res.boxes is not None:
+        try:
+            box = res.boxes[best_idx].xyxy[0].cpu().numpy().astype(int)
+            x1, y1 = max(0, box[0]), max(0, box[1])
+            x2, y2 = min(w, box[2]), min(h, box[3])
+            bw, bh = max(10, x2 - x1), max(10, y2 - y1)
+
+            rect = (x1, y1, bw, bh)
+            bgd_model = np.zeros((1, 65), np.float64)
+            fgd_model = np.zeros((1, 65), np.float64)
+            mask = np.zeros(img.shape[:2], np.uint8)
+            cv2.grabCut(img, mask, rect, bgd_model, fgd_model, 3, cv2.GC_INIT_WITH_RECT)
+            alpha = np.where((mask == 2) | (mask == 0), 0, 255).astype("uint8")
+            alpha = cv2.GaussianBlur(alpha, (5, 5), 0)
+            rgba[:, :, 3] = alpha
+
+            pad = 8
+            x1c, y1c = max(0, x1 - pad), max(0, y1 - pad)
+            x2c, y2c = min(w, x2 + pad), min(h, y2 + pad)
+            cropped = rgba[y1c:y2c, x1c:x2c]
+        except Exception as e:
+            print(f"GrabCut bbox error: {e}")
+            cropped = None
+
+    # 5. Last Fallback: Center salient GrabCut
+    if cropped is None:
+        try:
+            margin_x, margin_y = int(w * 0.05), int(h * 0.05)
+            rect = (margin_x, margin_y, w - 2 * margin_x, h - 2 * margin_y)
+            bgd_model = np.zeros((1, 65), np.float64)
+            fgd_model = np.zeros((1, 65), np.float64)
+            mask = np.zeros(img.shape[:2], np.uint8)
+            cv2.grabCut(img, mask, rect, bgd_model, fgd_model, 3, cv2.GC_INIT_WITH_RECT)
+            alpha = np.where((mask == 2) | (mask == 0), 0, 255).astype("uint8")
+            rgba[:, :, 3] = alpha
+            cropped = rgba
+        except Exception as e:
+            print(f"GrabCut fallback error: {e}")
+            cropped = rgba
+
+    try:
+        cv2.imwrite(cache_path, cropped)
+        return web_path
+    except Exception as e:
+        print(f"Error saving extracted image {cache_path}: {e}")
+        return image_source

@@ -156,10 +156,13 @@ app.register_blueprint(designs)
 # Run Server
 # -----------------------------
 if __name__ == "__main__":
-
-    os.makedirs("uploads", exist_ok=True)
-    os.makedirs("uploads/results", exist_ok=True)
-    os.makedirs("uploads/generated", exist_ok=True)
+# os.makedirs("uploads", exist_ok=True)
+  #  os.makedirs("uploads/results", exist_ok=True)
+   # os.makedirs("uploads/generated", exist_ok=True)
+    os.makedirs(UPLOADS_ABS_PATH, exist_ok=True)
+    os.makedirs(os.path.join(UPLOADS_ABS_PATH, "results"), exist_ok=True)
+    os.makedirs(os.path.join(UPLOADS_ABS_PATH, "generated"), exist_ok=True)
+    os.makedirs(os.path.join(UPLOADS_ABS_PATH, "extracted_objects"), exist_ok=True)
 
     with app.app_context():
         db.create_all()

@@ -17,6 +17,7 @@ from services.amazon_catalog import (
 from services.chat_ai import format_breakdown_reply, process_message
 from services.furniture_catalog import BED_TYPES, build_gemini_link, generate_room_options
 from services.image_generator import generate_design_image, generate_room_variations
+from services.object_extractor import extract_and_segment_object
 
 chat = Blueprint("chat", __name__)
 
@@ -811,4 +812,27 @@ def chat_message():
 
     except Exception as e:
         db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@chat.route("/furniture/extract", methods=["POST"])
+def extract_furniture():
+    try:
+        data = request.get_json() or {}
+        image_url = data.get("image_url")
+        category = data.get("category", "bed")
+        item_id = data.get("item_id")
+
+        if not image_url:
+            return jsonify({"success": False, "message": "image_url is required"}), 400
+
+        extracted_url = extract_and_segment_object(image_url, category=category)
+        return jsonify({
+            "success": True,
+            "original_image_url": image_url,
+            "extracted_image_url": extracted_url,
+            "category": category,
+            "item_id": item_id,
+        })
+    except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500

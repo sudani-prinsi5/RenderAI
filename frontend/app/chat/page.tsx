@@ -28,7 +28,10 @@ import {
   getDatasetItems,
   getBudgetBracketKey,
   parseBudgetFromInput,
+  getOrExtractItemImageUrl,
+  prefetchCategoryExtractions,
 } from "../services/datasetCatalog";
+
 
 const API_BASE = "http://127.0.0.1:5000";
 
@@ -287,6 +290,7 @@ export default function ChatPage() {
     const dropX = posX ?? 50;
     const dropY = posY ?? 60;
     const uniqueItemId = `item_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const initialPlacedUrl = item.extracted_image_url || item.image_url;
 
     const newPlacedItem: PlacedItem = {
       id: uniqueItemId,
@@ -295,7 +299,7 @@ export default function ChatPage() {
       label: item.label,
       category: item.category,
       price: item.price,
-      image_url: item.image_url,
+      image_url: initialPlacedUrl,
       pos_x: dropX,
       pos_y: dropY,
       scale: 1.0,
@@ -304,6 +308,17 @@ export default function ChatPage() {
 
     // Update canvas state immediately with only this added item
     setPlacedItems((prev) => [...prev, newPlacedItem]);
+
+    // If transparent version is not yet resolved, extract it in background and update
+    if (!item.extracted_image_url) {
+      getOrExtractItemImageUrl(item).then((extractedUrl) => {
+        if (extractedUrl && extractedUrl !== initialPlacedUrl) {
+          setPlacedItems((prev) =>
+            prev.map((it) => (it.id === uniqueItemId ? { ...it, image_url: extractedUrl } : it))
+          );
+        }
+      });
+    }
 
     // Continue the AI conversation naturally
     const nextCategories = DATASET_CATEGORIES.filter((c) => c.key !== item.category).map((c) => c.key);
@@ -336,7 +351,7 @@ export default function ChatPage() {
             label: item.label,
             category: item.category,
             price: item.price,
-            image_url: item.image_url,
+            image_url: initialPlacedUrl,
             dimensions: item.dimensions,
             scale: 1.0,
           },
@@ -350,6 +365,7 @@ export default function ChatPage() {
             prev.map((it) => (it.id === uniqueItemId ? { ...it, id: backendId } : it))
           );
         }
+
       } catch (err) {
         console.error("Failed to persist added furniture item in backend:", err);
       }
@@ -811,7 +827,15 @@ export default function ChatPage() {
                                   draggable
                                   onDragStart={(e) => {
                                     setDraggedItem(item);
-                                    e.dataTransfer.setData("application/json", JSON.stringify(item));
+                                    const dragUrl = item.extracted_image_url || item.image_url;
+                                    const payload = { ...item, image_url: dragUrl };
+                                    e.dataTransfer.setData("application/json", JSON.stringify(payload));
+                                    e.dataTransfer.effectAllowed = "copyMove";
+                                    try {
+                                      const ghost = new Image();
+                                      ghost.src = dragUrl;
+                                      e.dataTransfer.setDragImage(ghost, 60, 45);
+                                    } catch {}
                                   }}
                                   className={`border rounded-xl p-2 flex flex-col justify-between transition group shadow-2xs cursor-grab active:cursor-grabbing ${
                                     isLight
@@ -820,16 +844,18 @@ export default function ChatPage() {
                                   }`}
                                 >
                                   <div>
-                                    <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-stone-50 dark:bg-slate-950 mb-1.5 flex items-center justify-center border border-stone-100 dark:border-slate-800">
+                                    <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-stone-50 dark:bg-slate-950 mb-1.5 flex items-center justify-center border border-stone-100 dark:border-slate-800 select-none">
                                       <img
-                                        src={item.image_url}
+                                        src={item.extracted_image_url || item.image_url}
                                         alt={item.label}
+                                        draggable={false}
+                                        onDragStart={(e) => e.preventDefault()}
                                         referrerPolicy="no-referrer"
                                         onError={(e) => {
                                           (e.target as HTMLImageElement).src =
                                             "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400";
                                         }}
-                                        className="max-h-full max-w-full object-contain"
+                                        className="max-h-full max-w-full object-contain pointer-events-none select-none"
                                       />
                                       <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold pointer-events-none">
                                         <FiMove className="mr-1" /> Drag to Room
@@ -840,6 +866,7 @@ export default function ChatPage() {
                                       ₹{item.price.toLocaleString("en-IN")}
                                     </span>
                                   </div>
+
 
                                   <button
                                     onClick={() => handlePlaceFurnitureItem(item)}
@@ -923,8 +950,17 @@ export default function ChatPage() {
             onPlaceItem={(item) => handlePlaceFurnitureItem(item)}
             onDragStartItem={(e, item) => {
               setDraggedItem(item);
-              e.dataTransfer.setData("application/json", JSON.stringify(item));
+              const dragUrl = item.extracted_image_url || item.image_url;
+              const payload = { ...item, image_url: dragUrl };
+              e.dataTransfer.setData("application/json", JSON.stringify(payload));
+              e.dataTransfer.effectAllowed = "copyMove";
+              try {
+                const ghost = new Image();
+                ghost.src = dragUrl;
+                e.dataTransfer.setDragImage(ghost, 60, 45);
+              } catch {}
             }}
+
             isLight={isLight}
           />
 

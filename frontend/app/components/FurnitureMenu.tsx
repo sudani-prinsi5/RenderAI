@@ -15,6 +15,7 @@ import {
   BUDGET_TIERS,
   DatasetFurnitureItem,
   getDatasetItems,
+  prefetchCategoryExtractions,
 } from "../services/datasetCatalog";
 
 interface FurnitureMenuProps {
@@ -45,7 +46,9 @@ export default function FurnitureMenu({
     const bracket = selectedBudgetBracket === "all" ? undefined : selectedBudgetBracket;
     const filtered = getDatasetItems(activeCategory, userBudget, bracket);
     setItems(filtered);
+    prefetchCategoryExtractions(filtered, (updated) => setItems(updated));
   }, [activeCategory, selectedBudgetBracket, userBudget]);
+
 
   if (!isOpen) return null;
 
@@ -165,17 +168,20 @@ export default function FurnitureMenu({
                 >
                   <div>
                     {/* Item Image */}
-                    <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-stone-50 dark:bg-slate-900 border border-stone-100 dark:border-slate-800 flex items-center justify-center mb-3">
+                    <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-stone-50 dark:bg-slate-900 border border-stone-100 dark:border-slate-800 flex items-center justify-center mb-3 select-none">
                       <img
-                        src={item.image_url}
+                        src={item.extracted_image_url || item.image_url}
                         alt={item.label}
+                        draggable={false}
+                        onDragStart={(e) => e.preventDefault()}
                         referrerPolicy="no-referrer"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
                             "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400";
                         }}
-                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 pointer-events-none select-none"
                       />
+
 
                       {/* Budget Bracket Badge */}
                       <span className="absolute top-2 left-2 bg-stone-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">

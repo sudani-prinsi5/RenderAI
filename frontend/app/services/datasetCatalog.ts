@@ -1,3 +1,5 @@
+import api from "./api";
+
 export interface DatasetFurnitureItem {
   id: string;
   category: string;
@@ -7,6 +9,7 @@ export interface DatasetFurnitureItem {
   budgetLabel: string;
   price: number;
   image_url: string;
+  extracted_image_url?: string;
   dimensions: {
     length_ft: number;
     width_ft: number;
@@ -15,6 +18,7 @@ export interface DatasetFurnitureItem {
   material?: string;
   description?: string;
 }
+
 
 export interface FurnitureCategory {
   key: string;
@@ -500,3 +504,60 @@ export function getDatasetItems(category: string, userBudget?: number, bracketKe
 export function getDatasetItemById(id: string): DatasetFurnitureItem | undefined {
   return REAL_FURNITURE_DATASET.find((it) => it.id === id);
 }
+
+const extractionCache = new Map<string, string>();
+
+/**
+ * Programmatically extract and segment ONLY the furniture object with transparent background at runtime.
+ */
+export async function getOrExtractItemImageUrl(item: DatasetFurnitureItem): Promise<string> {
+  if (item.extracted_image_url) return item.extracted_image_url;
+  const key = `${item.id}_${item.category}_${item.image_url}`;
+  if (extractionCache.has(key)) {
+    const cached = extractionCache.get(key)!;
+    item.extracted_image_url = cached;
+    return cached;
+  }
+
+  try {
+    const res = await api.post("/furniture/extract", {
+      image_url: item.image_url,
+      category: item.category || item.name,
+      item_id: item.id,
+    });
+    if (res.data?.success && res.data.extracted_image_url) {
+      let url = res.data.extracted_image_url as string;
+      if (url.startsWith("/")) {
+        url = `http://127.0.0.1:5000${url}`;
+      }
+      extractionCache.set(key, url);
+      item.extracted_image_url = url;
+      return url;
+    }
+  } catch (err) {
+    console.warn("Could not extract furniture object:", err);
+  }
+
+  return item.image_url;
+}
+
+/**
+ * Background pre-extraction for currently visible items
+ */
+export function prefetchCategoryExtractions(items: DatasetFurnitureItem[], onUpdated?: (updatedItems: DatasetFurnitureItem[]) => void) {
+  let changed = false;
+  items.forEach((it) => {
+    if (!it.extracted_image_url) {
+      getOrExtractItemImageUrl(it).then((extractedUrl) => {
+        if (extractedUrl && extractedUrl !== it.image_url) {
+          it.extracted_image_url = extractedUrl;
+          changed = true;
+          if (onUpdated) {
+            onUpdated([...items]);
+          }
+        }
+      });
+    }
+  });
+}
+

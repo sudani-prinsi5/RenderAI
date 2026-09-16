@@ -105,6 +105,7 @@ export default function RoomCanvas({
 
   // Mouse drag logic for repositioning placed items on canvas
   const handleMouseDownItem = (e: React.MouseEvent, item: PlacedItem) => {
+    e.preventDefault();
     e.stopPropagation();
     setSelectedItemId(item.id);
     setDraggingPlacedId(item.id);
@@ -119,6 +120,7 @@ export default function RoomCanvas({
       });
     }
   };
+
 
   const handleMouseMoveCanvas = (e: React.MouseEvent) => {
     if (!draggingPlacedId || !canvasContainerRef.current) return;
@@ -254,8 +256,12 @@ export default function RoomCanvas({
             src={roomImage}
             alt="Uploaded Room Workspace"
             referrerPolicy="no-referrer"
-            className="w-full h-full object-cover pointer-events-none transition-opacity duration-300"
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+            className="w-full h-full object-cover pointer-events-none select-none transition-opacity duration-300"
+            style={{ userSelect: "none" }}
           />
+
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-stone-400">
             <FiGrid className="text-4xl mb-2 opacity-40" />
@@ -289,6 +295,7 @@ export default function RoomCanvas({
                 left: `${item.pos_x}%`,
                 top: `${item.pos_y}%`,
                 transform: `translate(-50%, -50%) scale(${scale})`,
+                userSelect: "none",
               }}
               onMouseDown={(e) => handleMouseDownItem(e, item)}
               onClick={(e) => {
@@ -310,13 +317,18 @@ export default function RoomCanvas({
                 <img
                   src={item.image_url}
                   alt={item.label}
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
                   referrerPolicy="no-referrer"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src =
                       "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400";
                   }}
-                  className="w-28 sm:w-36 md:w-44 h-auto object-contain drop-shadow-2xl mix-blend-multiply dark:mix-blend-normal pointer-events-none"
+                  className="w-28 sm:w-36 md:w-44 h-auto object-contain drop-shadow-2xl pointer-events-none select-none"
+                  style={{ userSelect: "none" }}
                 />
+
+
 
                 {/* Price and Category Tag */}
                 <div className="absolute bottom-1.5 left-1.5 bg-slate-950/85 backdrop-blur-sm text-white px-2 py-0.5 rounded-md text-[10px] font-bold font-mono shadow">
