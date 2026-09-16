@@ -141,6 +141,15 @@ def result_file(filename):
 def generated_file(filename):
     return send_from_directory(os.path.join(UPLOADS_ABS_PATH, "generated"), filename)
 
+# -----------------------------
+# Furniture Dataset Images
+# -----------------------------
+DATASET_ABS_PATH = os.path.join(ROOT_DIR, "furniture_dataset")
+
+@app.route("/furniture_dataset/<path:filename>")
+def dataset_file(filename):
+    return send_from_directory(DATASET_ABS_PATH, filename)
+
 app.register_blueprint(generate)
 app.register_blueprint(designs)
 # -----------------------------
