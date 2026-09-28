@@ -213,6 +213,9 @@ FURNITURE_ALIASES = {
     "stool": "chair",
     "nightstand": "table",
     "side table": "table",
+    "bedside table": "table",
+    "bedside_table": "table",
+    "bedside": "table",
     "coffee table": "table",
     "closet": "wardrobe",
     "cupboard": "wardrobe",
@@ -221,6 +224,9 @@ FURNITURE_ALIASES = {
     "gaming desk": "desk",
     "television": "tv",
     "tv stand": "tv",
+    "night lamp": "lamp",
+    "table lamp": "lamp",
+    "bedside lamp": "lamp",
 }
 
 SIZE_KEYWORDS = [

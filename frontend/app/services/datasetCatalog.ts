@@ -19,7 +19,6 @@ export interface DatasetFurnitureItem {
   description?: string;
 }
 
-
 export interface FurnitureCategory {
   key: string;
   label: string;
@@ -37,18 +36,18 @@ export const DATASET_CATEGORIES: FurnitureCategory[] = [
     description: "Solid wood, platform, and upholstered designer beds from the dataset",
   },
   {
+    key: "bedside_table",
+    label: "Bedside Table",
+    icon: "🪵",
+    suggestedPlacements: ["Left Bedside", "Right Bedside"],
+    description: "Solid wood, floating, and contemporary bedside tables & nightstands",
+  },
+  {
     key: "lamp",
     label: "Night Lamp",
     icon: "💡",
     suggestedPlacements: ["Bedside Corner", "Reading Corner"],
     description: "Warm ambient and bedside lighting fixtures",
-  },
-  {
-    key: "table",
-    label: "Side Table",
-    icon: "🪵",
-    suggestedPlacements: ["Left Bedside", "Right Bedside"],
-    description: "Compact solid wood and contemporary nightstands",
   },
   {
     key: "chair",
@@ -305,90 +304,442 @@ export const REAL_FURNITURE_DATASET: DatasetFurnitureItem[] = [
     description: "Masterpiece centerpiece bed designed for expansive luxury bedrooms.",
   },
 
-  // ==========================================
-  // COMPLEMENTARY CATEGORIES (NIGHT LAMPS)
-  // ==========================================
+  // ========================================================
+  // BEDSIDE TABLES - FROM furniture_dataset/bedside_table/
+  // ========================================================
+  // Tier 1: Under ₹10,000
   {
-    id: "lamp_1",
+    id: "bedside_table_10k_1",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Scandinavian Floating Oak Nightstand",
+    budgetBracket: "buget_10k",
+    budgetLabel: "Under ₹10,000",
+    price: 3400,
+    image_url: "/furniture_dataset/bedside_table/buget_10k/table1.jpg",
+    dimensions: { length_ft: 1.5, width_ft: 1.3, height_ft: 1.8 },
+    material: "Natural Oak & Smooth Glide Drawer",
+    description: "Space-efficient nightstand with soft-close drawer and lower storage shelf.",
+  },
+  {
+    id: "bedside_table_10k_2",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Contemporary Walnut Bedside Table",
+    budgetBracket: "buget_10k",
+    budgetLabel: "Under ₹10,000",
+    price: 4800,
+    image_url: "/furniture_dataset/bedside_table/buget_10k/table2.jpg",
+    dimensions: { length_ft: 1.8, width_ft: 1.4, height_ft: 2.0 },
+    material: "Solid Walnut & Brass Handle",
+    description: "Refined bedside table with dual drawers for streamlined organization.",
+  },
+  {
+    id: "bedside_table_10k_3",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Minimalist Dual-Shelf Nightstand",
+    budgetBracket: "buget_10k",
+    budgetLabel: "Under ₹10,000",
+    price: 6500,
+    image_url: "/furniture_dataset/bedside_table/buget_10k/table3.jpg",
+    dimensions: { length_ft: 1.6, width_ft: 1.4, height_ft: 1.9 },
+    material: "Matte Lacquer & Engineered Core",
+    description: "Clean modern nightstand offering dual open storage compartments.",
+  },
+  {
+    id: "bedside_table_10k_4",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Solid Teakwood Bedside Drawer",
+    budgetBracket: "buget_10k",
+    budgetLabel: "Under ₹10,000",
+    price: 8500,
+    image_url: "/furniture_dataset/bedside_table/buget_10k/table4.jpg",
+    dimensions: { length_ft: 1.8, width_ft: 1.5, height_ft: 2.1 },
+    material: "Handcrafted Teak Wood",
+    description: "Sturdy handcrafted teak bedside table with rich natural grain finish.",
+  },
+
+  // Tier 2: ₹10,000 - ₹20,000
+  {
+    id: "bedside_table_20k_1",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Luxury Marble Top Side Table",
+    budgetBracket: "buget_10k_to_20k",
+    budgetLabel: "₹10,000 - ₹20,000",
+    price: 12500,
+    image_url: "/furniture_dataset/bedside_table/buget_10k_to_20k/table5.jpg",
+    dimensions: { length_ft: 1.8, width_ft: 1.8, height_ft: 2.1 },
+    material: "White Carrara Marble & Gold Steel",
+    description: "Premium natural stone side table adding instant luxury beside the bed.",
+  },
+  {
+    id: "bedside_table_20k_2",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Mid-Century Modern Bedside Table",
+    budgetBracket: "buget_10k_to_20k",
+    budgetLabel: "₹10,000 - ₹20,000",
+    price: 14800,
+    image_url: "/furniture_dataset/bedside_table/buget_10k_to_20k/table6.jpg",
+    dimensions: { length_ft: 1.9, width_ft: 1.5, height_ft: 2.2 },
+    material: "American Walnut & Tapered Legs",
+    description: "Iconic mid-century silhouette featuring deep drawer and angled solid legs.",
+  },
+  {
+    id: "bedside_table_20k_3",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Nordic Dual-Tier Bedside Table",
+    budgetBracket: "buget_10k_to_20k",
+    budgetLabel: "₹10,000 - ₹20,000",
+    price: 16900,
+    image_url: "/furniture_dataset/bedside_table/buget_10k_to_20k/table7.jpg",
+    dimensions: { length_ft: 2.0, width_ft: 1.6, height_ft: 2.2 },
+    material: "Solid Bleached Oak",
+    description: "Architectural two-tier bedside piece with hidden cable routing channel.",
+  },
+  {
+    id: "bedside_table_20k_4",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Artisan Solid Cane & Oak Nightstand",
+    budgetBracket: "buget_10k_to_20k",
+    budgetLabel: "₹10,000 - ₹20,000",
+    price: 18500,
+    image_url: "/furniture_dataset/bedside_table/buget_10k_to_20k/table8.jpg",
+    dimensions: { length_ft: 1.9, width_ft: 1.5, height_ft: 2.2 },
+    material: "Woven Natural Cane & Solid Oak",
+    description: "Artisan woven cane drawer front bringing organic texture to bedroom walls.",
+  },
+
+  // Tier 3: ₹20,000 - ₹30,000
+  {
+    id: "bedside_table_30k_1",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Executive Brushed Gold & Walnut Nightstand",
+    budgetBracket: "buget_20k_to_30k",
+    budgetLabel: "₹20,000 - ₹30,000",
+    price: 22000,
+    image_url: "/furniture_dataset/bedside_table/buget_20k_to_30k/table9.jpg",
+    dimensions: { length_ft: 2.0, width_ft: 1.6, height_ft: 2.3 },
+    material: "Solid Dark Walnut & Champagne Metal",
+    description: "High-end bespoke nightstand with champagne gold base and velvet-lined drawer.",
+  },
+  {
+    id: "bedside_table_30k_2",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Italian Fluted Wood Bedside Cabinet",
+    budgetBracket: "buget_20k_to_30k",
+    budgetLabel: "₹20,000 - ₹30,000",
+    price: 24500,
+    image_url: "/furniture_dataset/bedside_table/buget_20k_to_30k/table10.jpg",
+    dimensions: { length_ft: 2.1, width_ft: 1.7, height_ft: 2.3 },
+    material: "Curved Fluted Ashwood",
+    description: "Sculptural cylindrical cabinet with fluted wood exterior and push-to-open drawer.",
+  },
+  {
+    id: "bedside_table_30k_3",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Floating Glass & Brass Nightstand",
+    budgetBracket: "buget_20k_to_30k",
+    budgetLabel: "₹20,000 - ₹30,000",
+    price: 27500,
+    image_url: "/furniture_dataset/bedside_table/buget_20k_to_30k/table11.jpg",
+    dimensions: { length_ft: 2.0, width_ft: 1.6, height_ft: 2.4 },
+    material: "Tempered Smoked Glass & Satin Brass",
+    description: "Contemporary floating glass silhouette creating an airy luxury visual aesthetic.",
+  },
+  {
+    id: "bedside_table_30k_4",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Velvet Upholstered Luxury Bedside Table",
+    budgetBracket: "buget_20k_to_30k",
+    budgetLabel: "₹20,000 - ₹30,000",
+    price: 29000,
+    image_url: "/furniture_dataset/bedside_table/buget_20k_to_30k/table12.jpg",
+    dimensions: { length_ft: 2.2, width_ft: 1.7, height_ft: 2.4 },
+    material: "Plush Velvet Wrap & Quartz Top",
+    description: "Rich velvet tailored perimeter paired with stain-resistant quartz top.",
+  },
+
+  // Tier 4: ₹30,000 - ₹40,000+
+  {
+    id: "bedside_table_40k_1",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Sovereign Imperial Marble & Brass Nightstand",
+    budgetBracket: "buget_30k_to_40k",
+    budgetLabel: "₹30,000 - ₹40,000+",
+    price: 32000,
+    image_url: "/furniture_dataset/bedside_table/buget_30k_to_40k/table13.jpg",
+    dimensions: { length_ft: 2.2, width_ft: 1.8, height_ft: 2.5 },
+    material: "Calacatta Gold Marble & Brass Inlay",
+    description: "Opulent Italian Calacatta gold marble nightstand for master suites.",
+  },
+  {
+    id: "bedside_table_40k_2",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Designer Sculptural Stone Bedside Table",
+    budgetBracket: "buget_30k_to_40k",
+    budgetLabel: "₹30,000 - ₹40,000+",
+    price: 35500,
+    image_url: "/furniture_dataset/bedside_table/buget_30k_to_40k/table14.jpg",
+    dimensions: { length_ft: 2.2, width_ft: 1.8, height_ft: 2.5 },
+    material: "Solid Travertine & Brushed Titanium",
+    description: "Monolithic architectural statement stone table crafted by luxury artisans.",
+  },
+  {
+    id: "bedside_table_40k_3",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Opulent Handcrafted Teak Bedside Suite",
+    budgetBracket: "buget_30k_to_40k",
+    budgetLabel: "₹30,000 - ₹40,000+",
+    price: 38000,
+    image_url: "/furniture_dataset/bedside_table/buget_30k_to_40k/table15.jpg",
+    dimensions: { length_ft: 2.3, width_ft: 1.8, height_ft: 2.6 },
+    material: "Solid Burma Teak & Leather Drawers",
+    description: "Rare aged teakwood frame with hand-stitched leather drawer linings.",
+  },
+  {
+    id: "bedside_table_40k_4",
+    category: "bedside_table",
+    name: "bedside_table",
+    label: "Monolithic Travertine Nightstand",
+    budgetBracket: "buget_30k_to_40k",
+    budgetLabel: "₹30,000 - ₹40,000+",
+    price: 39900,
+    image_url: "/furniture_dataset/bedside_table/buget_30k_to_40k/table16.jpg",
+    dimensions: { length_ft: 2.4, width_ft: 1.9, height_ft: 2.6 },
+    material: "Beige Roman Travertine Block",
+    description: "Ultra-luxury solid block travertine nightstand creating timeless grandeur.",
+  },
+
+  // ==========================================
+  // LAMPS - FROM furniture_dataset/lamp/
+  // ==========================================
+  // Tier 1: Under ₹10,000
+  {
+    id: "lamp_10k_1",
     category: "lamp",
     name: "lamp",
     label: "Nordic Minimalist Ceramic Bedside Lamp",
     budgetBracket: "buget_10k",
     budgetLabel: "Under ₹10,000",
     price: 1850,
-    image_url: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=400",
+    image_url: "/furniture_dataset/lamp/buget_10k/lamp1.jpg",
     dimensions: { length_ft: 1.0, width_ft: 1.0, height_ft: 1.6 },
     material: "Ceramic & Linen Shade",
     description: "Warm 2700K ambient bedside glow with natural textured fabric shade.",
   },
   {
-    id: "lamp_2",
+    id: "lamp_10k_2",
     category: "lamp",
     name: "lamp",
     label: "Modern Brass Tripod Ambient Lamp",
     budgetBracket: "buget_10k",
     budgetLabel: "Under ₹10,000",
     price: 3200,
-    image_url: "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=400",
+    image_url: "/furniture_dataset/lamp/buget_10k/lamp2.jpg",
     dimensions: { length_ft: 1.2, width_ft: 1.2, height_ft: 2.2 },
     material: "Brushed Brass & Frosted Glass",
     description: "Sculptural brass accent light ideal for corner or bedside illumination.",
   },
   {
-    id: "lamp_3",
+    id: "lamp_10k_3",
+    category: "lamp",
+    name: "lamp",
+    label: "Warm Globe Bedside Nightstand Light",
+    budgetBracket: "buget_10k",
+    budgetLabel: "Under ₹10,000",
+    price: 4500,
+    image_url: "/furniture_dataset/lamp/buget_10k/lamp3.jpg",
+    dimensions: { length_ft: 1.1, width_ft: 1.1, height_ft: 1.8 },
+    material: "Opal Glass & Matte Base",
+    description: "Soft diffuse globe emitting calming ambient light for peaceful sleep.",
+  },
+  {
+    id: "lamp_10k_4",
+    category: "lamp",
+    name: "lamp",
+    label: "Japanese Paper Lantern Table Lamp",
+    budgetBracket: "buget_10k",
+    budgetLabel: "Under ₹10,000",
+    price: 6800,
+    image_url: "/furniture_dataset/lamp/buget_10k/lamp4.jpg",
+    dimensions: { length_ft: 1.2, width_ft: 1.2, height_ft: 2.0 },
+    material: "Washi Paper & Bamboo Frame",
+    description: "Traditional zen-inspired paper lantern light creating soothing mood warmth.",
+  },
+
+  // Tier 2: ₹10,000 - ₹20,000
+  {
+    id: "lamp_20k_1",
     category: "lamp",
     name: "lamp",
     label: "Designer Sculptural Floor Lamp",
     budgetBracket: "buget_10k_to_20k",
     budgetLabel: "₹10,000 - ₹20,000",
-    price: 6800,
-    image_url: "https://images.unsplash.com/photo-1540932239986-30128078f3c5?w=400",
+    price: 11500,
+    image_url: "/furniture_dataset/lamp/buget_10k_to_20k/lamp5.jpg",
     dimensions: { length_ft: 1.5, width_ft: 1.5, height_ft: 5.2 },
     material: "Matte Black Steel & Smoked Glass",
     description: "Statement architectural floor lighting for elevated bedroom corners.",
   },
-
-  // ==========================================
-  // COMPLEMENTARY CATEGORIES (SIDE TABLES)
-  // ==========================================
   {
-    id: "table_1",
-    category: "table",
-    name: "table",
-    label: "Scandinavian Floating Oak Nightstand",
-    budgetBracket: "buget_10k",
-    budgetLabel: "Under ₹10,000",
-    price: 3400,
-    image_url: "https://images.unsplash.com/photo-1532372320572-cda25653a26d?w=400",
-    dimensions: { length_ft: 1.5, width_ft: 1.3, height_ft: 1.8 },
-    material: "Natural Oak & Smooth Glide Drawer",
-    description: "Space-efficient nightstand with soft-close drawer and lower storage shelf.",
-  },
-  {
-    id: "table_2",
-    category: "table",
-    name: "table",
-    label: "Contemporary Walnut Bedside Table",
-    budgetBracket: "buget_10k",
-    budgetLabel: "Under ₹10,000",
-    price: 4800,
-    image_url: "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=400",
-    dimensions: { length_ft: 1.8, width_ft: 1.4, height_ft: 2.0 },
-    material: "Solid Walnut & Brass Handle",
-    description: "Refined bedside table with dual drawers for streamlined organization.",
-  },
-  {
-    id: "table_3",
-    category: "table",
-    name: "table",
-    label: "Luxury Marble Top Side Table",
+    id: "lamp_20k_2",
+    category: "lamp",
+    name: "lamp",
+    label: "Arched Brass Standing Reading Lamp",
     budgetBracket: "buget_10k_to_20k",
     budgetLabel: "₹10,000 - ₹20,000",
-    price: 7900,
-    image_url: "https://images.unsplash.com/photo-1577140917170-285929fb55b7?w=400",
-    dimensions: { length_ft: 1.8, width_ft: 1.8, height_ft: 2.1 },
-    material: "White Carrara Marble & Gold Steel",
-    description: "Premium natural stone side table adding instant luxury beside the bed.",
+    price: 13800,
+    image_url: "/furniture_dataset/lamp/buget_10k_to_20k/lamp6.jpg",
+    dimensions: { length_ft: 1.8, width_ft: 1.5, height_ft: 5.5 },
+    material: "Polished Brass & Marble Base",
+    description: "Gracefully arched overhanging lamp providing targeted bedside reading light.",
+  },
+  {
+    id: "lamp_20k_3",
+    category: "lamp",
+    name: "lamp",
+    label: "Smoked Glass Ambient Bedside Fixture",
+    budgetBracket: "buget_10k_to_20k",
+    budgetLabel: "₹10,000 - ₹20,000",
+    price: 15900,
+    image_url: "/furniture_dataset/lamp/buget_10k_to_20k/lamp7.jpg",
+    dimensions: { length_ft: 1.3, width_ft: 1.3, height_ft: 2.4 },
+    material: "Smoked Grey Glass & Gold Core",
+    description: "Refined geometric bedside fixture with three-step touch dimming.",
+  },
+  {
+    id: "lamp_20k_4",
+    category: "lamp",
+    name: "lamp",
+    label: "Mid-Century Opal Pendant Night Lamp",
+    budgetBracket: "buget_10k_to_20k",
+    budgetLabel: "₹10,000 - ₹20,000",
+    price: 18200,
+    image_url: "/furniture_dataset/lamp/buget_10k_to_20k/lamp8.jpg",
+    dimensions: { length_ft: 1.4, width_ft: 1.4, height_ft: 2.8 },
+    material: "Hand-Blown Opaline Glass",
+    description: "Mid-century classic night fixture with brushed walnut finial.",
+  },
+
+  // Tier 3: ₹20,000 - ₹30,000
+  {
+    id: "lamp_30k_1",
+    category: "lamp",
+    name: "lamp",
+    label: "Artisan Travertine Cylinder Lamp",
+    budgetBracket: "buget_20k_to_30k",
+    budgetLabel: "₹20,000 - ₹30,000",
+    price: 21500,
+    image_url: "/furniture_dataset/lamp/buget_20k_to_30k/lamp9.jpg",
+    dimensions: { length_ft: 1.4, width_ft: 1.4, height_ft: 2.6 },
+    material: "Solid Travertine & Heavy Linen",
+    description: "Hand-carved travertine stone base with textured woven linen cylinder shade.",
+  },
+  {
+    id: "lamp_30k_2",
+    category: "lamp",
+    name: "lamp",
+    label: "Contemporary Linear LED Bedside Bar",
+    budgetBracket: "buget_20k_to_30k",
+    budgetLabel: "₹20,000 - ₹30,000",
+    price: 24000,
+    image_url: "/furniture_dataset/lamp/buget_20k_to_30k/lamp10.jpg",
+    dimensions: { length_ft: 1.2, width_ft: 1.2, height_ft: 3.2 },
+    material: "Anodized Aerospace Aluminum",
+    description: "Minimalist ultra-slim vertical light column with 360-degree ambient diffusion.",
+  },
+  {
+    id: "lamp_30k_3",
+    category: "lamp",
+    name: "lamp",
+    label: "Brushed Bronze Architectural Lamp",
+    budgetBracket: "buget_20k_to_30k",
+    budgetLabel: "₹20,000 - ₹30,000",
+    price: 26500,
+    image_url: "/furniture_dataset/lamp/buget_20k_to_30k/lamp11.jpg",
+    dimensions: { length_ft: 1.5, width_ft: 1.5, height_ft: 3.5 },
+    material: "Cast Bronze & Silk Shade",
+    description: "Heirloom-quality cast bronze bedside sculpture with raw silk shade.",
+  },
+  {
+    id: "lamp_30k_4",
+    category: "lamp",
+    name: "lamp",
+    label: "Italian Hand-blown Murano Glass Lamp",
+    budgetBracket: "buget_20k_to_30k",
+    budgetLabel: "₹20,000 - ₹30,000",
+    price: 28900,
+    image_url: "/furniture_dataset/lamp/buget_20k_to_30k/lamp12.jpg",
+    dimensions: { length_ft: 1.6, width_ft: 1.6, height_ft: 2.8 },
+    material: "Murano Swirl Glass & Brass",
+    description: "Authentic Murano glass swirl craftsmanship with warm ambient filament illumination.",
+  },
+
+  // Tier 4: ₹30,000 - ₹40,000+
+  {
+    id: "lamp_40k_1",
+    category: "lamp",
+    name: "lamp",
+    label: "Sovereign Crystal & Gold Chandelier Lamp",
+    budgetBracket: "buget_30k_to_40k",
+    budgetLabel: "₹30,000 - ₹40,000+",
+    price: 32500,
+    image_url: "/furniture_dataset/lamp/buget_30k_to_40k/lamp13.jpg",
+    dimensions: { length_ft: 1.8, width_ft: 1.8, height_ft: 3.8 },
+    material: "K9 Precision Crystal & 24K Gold Finish",
+    description: "Dazzling crystal facet bedside statement piece casting refractive light patterns.",
+  },
+  {
+    id: "lamp_40k_2",
+    category: "lamp",
+    name: "lamp",
+    label: "Sculptural Bronzed Floor Tower Lamp",
+    budgetBracket: "buget_30k_to_40k",
+    budgetLabel: "₹30,000 - ₹40,000+",
+    price: 35000,
+    image_url: "/furniture_dataset/lamp/buget_30k_to_40k/lamp14.jpg",
+    dimensions: { length_ft: 1.8, width_ft: 1.8, height_ft: 6.0 },
+    material: "Hand-Hammered Bronzed Steel",
+    description: "Grand architectural column floor lamp providing master suite focal glow.",
+  },
+  {
+    id: "lamp_40k_3",
+    category: "lamp",
+    name: "lamp",
+    label: "Imperial Marble Base Floor Arc Light",
+    budgetBracket: "buget_30k_to_40k",
+    budgetLabel: "₹30,000 - ₹40,000+",
+    price: 37500,
+    image_url: "/furniture_dataset/lamp/buget_30k_to_40k/lamp15.jpg",
+    dimensions: { length_ft: 2.2, width_ft: 1.8, height_ft: 6.2 },
+    material: "Solid Nero Marquina Marble & Brass Arc",
+    description: "Iconic sweeping arc lamp rooted in an 80lb Nero Marquina black marble block.",
+  },
+  {
+    id: "lamp_40k_4",
+    category: "lamp",
+    name: "lamp",
+    label: "Luxury Luminary Atelier Masterpiece",
+    budgetBracket: "buget_30k_to_40k",
+    budgetLabel: "₹30,000 - ₹40,000+",
+    price: 39999,
+    image_url: "/furniture_dataset/lamp/buget_30k_to_40k/lamp16.jpg",
+    dimensions: { length_ft: 2.0, width_ft: 2.0, height_ft: 5.8 },
+    material: "Curved Hand-Finished Brass & Calacatta Marble",
+    description: "Limited-edition luxury gallery lighting installation designed for elite penthouses.",
   },
 
   // ==========================================
@@ -473,23 +824,41 @@ export function parseBudgetFromInput(input: string): number | null {
  * Filter real dataset items by category and user's budget
  */
 export function getDatasetItems(category: string, userBudget?: number, bracketKey?: string): DatasetFurnitureItem[] {
-  const normCat = category.toLowerCase().trim();
+  const normCat = (category || "").toLowerCase().trim().replace(/[\s_-]+/g, "");
 
   let items = REAL_FURNITURE_DATASET.filter((it) => {
     if (normCat === "all") return true;
-    return it.category.toLowerCase() === normCat || it.name.toLowerCase() === normCat;
+    const itCat = (it.category || "").toLowerCase().replace(/[\s_-]+/g, "");
+    const itName = (it.name || "").toLowerCase().replace(/[\s_-]+/g, "");
+
+    if (normCat.includes("table") || normCat.includes("nightstand") || normCat.includes("bedside")) {
+      return (
+        itCat.includes("table") ||
+        itCat.includes("nightstand") ||
+        itCat.includes("bedside") ||
+        itName.includes("table") ||
+        itName.includes("nightstand") ||
+        itName.includes("bedside")
+      );
+    }
+    if (normCat.includes("lamp") || normCat.includes("light")) {
+      return itCat.includes("lamp") || itCat.includes("light") || itName.includes("lamp") || itName.includes("light");
+    }
+    if (normCat.includes("bed") && !normCat.includes("table") && !normCat.includes("side")) {
+      return (itCat === "bed" || itName === "bed") && !itCat.includes("table") && !itName.includes("table");
+    }
+
+    return itCat === normCat || itName === normCat || itCat.includes(normCat) || normCat.includes(itCat);
   });
 
   if (bracketKey) {
     items = items.filter((it) => it.budgetBracket === bracketKey);
   } else if (userBudget !== undefined && userBudget > 0) {
-    // Return items that fit within the entered budget or matching bracket
     const bracket = getBudgetBracketKey(userBudget);
     const bracketItems = items.filter((it) => it.budgetBracket === bracket);
     if (bracketItems.length > 0) {
       items = bracketItems;
     } else {
-      // Fallback to all items within price
       const priceFiltered = items.filter((it) => it.price <= userBudget * 1.15);
       if (priceFiltered.length > 0) items = priceFiltered;
     }
@@ -560,4 +929,3 @@ export function prefetchCategoryExtractions(items: DatasetFurnitureItem[], onUpd
     }
   });
 }
-

@@ -51,7 +51,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col transition-colors duration-200">
+      <body suppressHydrationWarning className="min-h-full flex flex-col transition-colors duration-200">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

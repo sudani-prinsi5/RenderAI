@@ -124,7 +124,12 @@ export default function UploadPage() {
       if (res.data.objects) setObjects(res.data.objects);
       if (res.data.object_counts) setObjectCounts(res.data.object_counts);
       if (res.data.total_objects !== undefined) setTotalObjects(res.data.total_objects);
-      if (res.data.room_id) setRoomId(res.data.room_id);
+      if (res.data.room_id) {
+        setRoomId(res.data.room_id);
+        try {
+          localStorage.removeItem("room_design_workspace_state");
+        } catch {}
+      }
 
       setUploadComplete(true);
     } catch (err: unknown) {

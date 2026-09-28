@@ -452,11 +452,13 @@ def add_product():
         width_ft = dim.get("width_ft", 2.5)
         height_ft = dim.get("height_ft", 3.0)
 
+        category_name = product.get("category") or product.get("name", "furniture")
         new_item = {
             "id": item_id,
             "datasetId": product.get("datasetId") or product.get("id"),
             "asin": product.get("asin", ""),
-            "name": product.get("category", "furniture"),
+            "name": product.get("name") or category_name,
+            "category": category_name,
             "label": product.get("label") or product.get("title", "Furniture Piece"),
             "size": product.get("sub_category", "standard"),
             "color": product.get("color", "Standard"),
@@ -471,6 +473,7 @@ def add_product():
             "pos_x": calc_x,
             "pos_y": calc_y,
             "scale": float(product_data.get("scale", 1.0)) if isinstance(product_data, dict) and "scale" in product_data else 1.0,
+            "rotation": float(product_data.get("rotation", 0.0)) if isinstance(product_data, dict) and "rotation" in product_data else 0.0,
             "description": product.get("description", ""),
         }
 
@@ -734,6 +737,31 @@ def remove_product():
             "chat_history": chat_history,
         })
 
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@chat.route("/chat/update-furniture-state", methods=["POST"])
+def update_furniture_state():
+    """
+    Updates the position, scale, and rotation coordinates of furniture items in the room.
+    """
+    try:
+        data = request.get_json() or {}
+        room_id = data.get("room_id")
+        user_id = data.get("user_id")
+        furniture_state = data.get("furniture_state")
+
+        room = _get_room(room_id, user_id)
+        if room is None:
+            return jsonify({"success": False, "message": "Room not found."}), 404
+
+        if furniture_state is not None and isinstance(furniture_state, list):
+            room.furniture_state = json.dumps(furniture_state)
+            db.session.commit()
+
+        return jsonify({"success": True, "furniture_state": furniture_state})
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": str(e)}), 500

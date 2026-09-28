@@ -40,10 +40,13 @@ interface RoomCanvasProps {
   onDropItem: (item: DatasetFurnitureItem, posX: number, posY: number) => void;
   onUpdateItemPosition: (id: string, posX: number, posY: number) => void;
   onUpdateItemScale: (id: string, scale: number) => void;
+  onUpdateItemRotation?: (id: string, rotation: number) => void;
   onRemoveItem: (id: string) => void;
   onClearAll?: () => void;
   isLight?: boolean;
   onZoomPreview?: (url: string) => void;
+  selectedItemId?: string | null;
+  onSelectItem?: (id: string | null) => void;
 }
 
 export default function RoomCanvas({
@@ -52,14 +55,25 @@ export default function RoomCanvas({
   onDropItem,
   onUpdateItemPosition,
   onUpdateItemScale,
+  onUpdateItemRotation,
   onRemoveItem,
   onClearAll,
   isLight = true,
   onZoomPreview,
+  selectedItemId: controlledSelectedItemId,
+  onSelectItem,
 }: RoomCanvasProps) {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [internalSelectedItemId, setInternalSelectedItemId] = useState<string | null>(null);
+
+  const selectedItemId = controlledSelectedItemId !== undefined ? controlledSelectedItemId : internalSelectedItemId;
+  const setSelectedItemId = (id: string | null) => {
+    if (onSelectItem) {
+      onSelectItem(id);
+    }
+    setInternalSelectedItemId(id);
+  };
 
   // Moving existing placed item on canvas
   const [draggingPlacedId, setDraggingPlacedId] = useState<string | null>(null);
@@ -193,6 +207,7 @@ export default function RoomCanvas({
         <div className="flex items-center gap-2">
           {placedItems.length > 0 && onClearAll && (
             <button
+              suppressHydrationWarning
               onClick={onClearAll}
               title="Clear placed furniture from canvas"
               className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
@@ -208,6 +223,7 @@ export default function RoomCanvas({
           {roomImage && (
             <>
               <button
+                suppressHydrationWarning
                 onClick={handleDownloadSnapshot}
                 title="Download design image"
                 className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
@@ -221,6 +237,7 @@ export default function RoomCanvas({
 
               {onZoomPreview && (
                 <button
+                  suppressHydrationWarning
                   onClick={() => onZoomPreview(roomImage)}
                   title="Fullscreen zoom"
                   className={`p-1.5 rounded-lg border text-xs font-medium transition flex items-center justify-center cursor-pointer ${
@@ -287,6 +304,7 @@ export default function RoomCanvas({
           const isSelected = selectedItemId === item.id;
           const isBeingDragged = draggingPlacedId === item.id;
           const scale = item.scale || 1.0;
+          const rotation = item.rotation || 0;
 
           return (
             <div
@@ -294,7 +312,7 @@ export default function RoomCanvas({
               style={{
                 left: `${item.pos_x}%`,
                 top: `${item.pos_y}%`,
-                transform: `translate(-50%, -50%) scale(${scale})`,
+                transform: `translate(-50%, -50%) scale(${scale}) rotate(${rotation}deg)`,
                 userSelect: "none",
               }}
               onMouseDown={(e) => handleMouseDownItem(e, item)}
@@ -337,6 +355,7 @@ export default function RoomCanvas({
 
                 {/* Remove button on hover / selected */}
                 <button
+                  suppressHydrationWarning
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemoveItem(item.id);
@@ -383,6 +402,7 @@ export default function RoomCanvas({
                 Size:
               </span>
               <button
+                suppressHydrationWarning
                 onClick={() => onUpdateItemScale(selectedItem.id, Math.max(0.6, (selectedItem.scale || 1.0) - 0.1))}
                 className={`p-1 rounded border transition ${
                   isLight ? "bg-white hover:bg-stone-100 border-stone-300" : "bg-slate-800 hover:bg-slate-700 border-slate-700"
@@ -395,6 +415,7 @@ export default function RoomCanvas({
                 {Math.round((selectedItem.scale || 1.0) * 100)}%
               </span>
               <button
+                suppressHydrationWarning
                 onClick={() => onUpdateItemScale(selectedItem.id, Math.min(1.8, (selectedItem.scale || 1.0) + 0.1))}
                 className={`p-1 rounded border transition ${
                   isLight ? "bg-white hover:bg-stone-100 border-stone-300" : "bg-slate-800 hover:bg-slate-700 border-slate-700"
@@ -405,8 +426,33 @@ export default function RoomCanvas({
               </button>
             </div>
 
+            {/* Rotation Control */}
+            <div className="flex items-center gap-1.5">
+              <span className={`text-[11px] font-medium ${isLight ? "text-stone-500" : "text-stone-400"}`}>
+                Rotation:
+              </span>
+              <input
+                suppressHydrationWarning
+                type="range"
+                min="0"
+                max="360"
+                step="1"
+                value={selectedItem.rotation ?? 0}
+                onChange={(e) => onUpdateItemRotation?.(selectedItem.id, Number(e.target.value))}
+                className={`w-20 sm:w-24 h-1.5 rounded-lg appearance-none cursor-pointer accent-indigo-600 ${
+                  isLight ? "bg-stone-200" : "bg-slate-700"
+                }`}
+                title={`Rotation: ${selectedItem.rotation ?? 0}°`}
+                aria-label="Rotation"
+              />
+              <span className="font-mono text-[11px] font-semibold w-8 text-center">
+                {selectedItem.rotation ?? 0}°
+              </span>
+            </div>
+
             {/* Remove */}
             <button
+              suppressHydrationWarning
               onClick={() => onRemoveItem(selectedItem.id)}
               className="text-rose-600 hover:text-rose-700 font-semibold text-[11px] flex items-center gap-1 cursor-pointer"
             >

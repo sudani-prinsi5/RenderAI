@@ -34,6 +34,35 @@ import {
 
 
 const API_BASE = "http://127.0.0.1:5000";
+const WORKSPACE_STORAGE_KEY = "room_design_workspace_state";
+
+const normalizePlacedItems = (items: any[]): PlacedItem[] => {
+  if (!Array.isArray(items)) return [];
+  return items.map((it: any, idx: number) => {
+    const cat = (it.category || it.name || "bed").toLowerCase();
+    let defaultFallbackUrl = "/furniture_dataset/bed/buget_10k/bed1.jpeg";
+    if (cat.includes("lamp") || cat.includes("light")) {
+      defaultFallbackUrl = "/furniture_dataset/lamp/buget_10k/lamp1.jpg";
+    } else if (cat.includes("table") || cat.includes("bedside") || cat.includes("nightstand")) {
+      defaultFallbackUrl = "/furniture_dataset/bedside_table/buget_10k/table1.jpg";
+    }
+
+    return {
+      id: String(it.id || `item_${idx}`),
+      datasetId: it.datasetId,
+      name: it.name || "furniture",
+      label: it.label || it.name || "Furniture Piece",
+      category: it.category || it.name || "bed",
+      price: Number(it.price) || 15000,
+      image_url: it.image_url || defaultFallbackUrl,
+      pos_x: Number(it.pos_x ?? (50 + (idx === 0 ? 0 : idx * 15 - 15))),
+      pos_y: Number(it.pos_y ?? (60 + (idx === 0 ? 0 : idx * 5))),
+      scale: Number(it.scale || 1.0),
+      rotation: Number(it.rotation || 0),
+      dimensions: it.dimensions || { length_ft: it.length_ft || 6.5, width_ft: it.width_ft || 5.0 },
+    };
+  });
+};
 
 interface ChatMessage {
   id: string;
@@ -75,10 +104,17 @@ export default function ChatPage() {
   const { isLight } = useTheme();
 
   // Room state
+  const [mounted, setMounted] = useState(false);
   const [room, setRoom] = useState<RoomData | null>(null);
   const [roomImageSrc, setRoomImageSrc] = useState<string | null>(null);
   const [placedItems, setPlacedItems] = useState<PlacedItem[]>([]);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRestored, setIsRestored] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Chat conversation state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -107,6 +143,23 @@ export default function ChatPage() {
   const [setupLoading, setSetupLoading] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const syncFurnitureToBackend = (items: PlacedItem[], roomId?: number) => {
+    if (!roomId) return;
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    syncTimeoutRef.current = setTimeout(async () => {
+      try {
+        await api.post("/chat/update-furniture-state", {
+          room_id: roomId,
+          user_id: getUserId(),
+          furniture_state: items,
+        });
+      } catch {
+        // Silent catch: localStorage maintains exact state
+      }
+    }, 400);
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -124,10 +177,142 @@ export default function ChatPage() {
     }
   };
 
-  // Load room on mount
+  // Restore workspace state on initial mount
   useEffect(() => {
-    loadLatestRoom();
+    let restoredFromStorage = false;
+    try {
+      const savedStr = localStorage.getItem(WORKSPACE_STORAGE_KEY);
+      if (savedStr) {
+        const saved = JSON.parse(savedStr);
+        if (saved && typeof saved === "object") {
+          const hasRoom = Boolean(saved.room || saved.roomImageSrc);
+          const hasItems = Array.isArray(saved.placedItems) && saved.placedItems.length > 0;
+          const hasMessages = Array.isArray(saved.messages) && saved.messages.length > 0;
+
+          if (hasRoom || hasItems || hasMessages) {
+            if (saved.room) setRoom(saved.room);
+            if (saved.roomImageSrc) setRoomImageSrc(saved.roomImageSrc);
+            if (Array.isArray(saved.placedItems)) {
+              setPlacedItems(normalizePlacedItems(saved.placedItems));
+            }
+            if (Array.isArray(saved.messages) && saved.messages.length > 0) {
+              setMessages(saved.messages);
+            }
+            if (saved.selectedItemId !== undefined) {
+              setSelectedItemId(saved.selectedItemId);
+            }
+            if (saved.currentPendingCategory) {
+              setCurrentPendingCategory(saved.currentPendingCategory);
+            }
+            if (typeof saved.currentBudget === "number") {
+              setCurrentBudget(saved.currentBudget);
+            }
+            if (saved.activeMenuCategory) {
+              setActiveMenuCategory(saved.activeMenuCategory);
+            }
+            if (saved.setupLength) setSetupLength(saved.setupLength);
+            if (saved.setupWidth) setSetupWidth(saved.setupWidth);
+            if (saved.setupHeight) setSetupHeight(saved.setupHeight);
+            if (typeof saved.showSetupModal === "boolean") {
+              setShowSetupModal(saved.showSetupModal);
+            }
+
+            setLoading(false);
+            restoredFromStorage = true;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to restore workspace from localStorage:", e);
+    }
+
+    setIsRestored(true);
+
+    if (!restoredFromStorage) {
+      loadLatestRoom();
+    }
   }, []);
+
+  // Persist workspace state to localStorage on state changes
+  useEffect(() => {
+    if (!isRestored) return;
+    try {
+      const stateToSave = {
+        room,
+        roomImageSrc,
+        placedItems,
+        messages,
+        selectedItemId,
+        currentPendingCategory,
+        currentBudget,
+        activeMenuCategory,
+        showSetupModal,
+        setupLength,
+        setupWidth,
+        setupHeight,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(stateToSave));
+    } catch (e) {
+      console.error("Failed to save workspace state to localStorage:", e);
+    }
+  }, [
+    isRestored,
+    room,
+    roomImageSrc,
+    placedItems,
+    messages,
+    selectedItemId,
+    currentPendingCategory,
+    currentBudget,
+    activeMenuCategory,
+    showSetupModal,
+    setupLength,
+    setupWidth,
+    setupHeight,
+  ]);
+
+  // Synchronous flush on window beforeunload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (!isRestored) return;
+      try {
+        const stateToSave = {
+          room,
+          roomImageSrc,
+          placedItems,
+          messages,
+          selectedItemId,
+          currentPendingCategory,
+          currentBudget,
+          activeMenuCategory,
+          showSetupModal,
+          setupLength,
+          setupWidth,
+          setupHeight,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(stateToSave));
+      } catch {}
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [
+    isRestored,
+    room,
+    roomImageSrc,
+    placedItems,
+    messages,
+    selectedItemId,
+    currentPendingCategory,
+    currentBudget,
+    activeMenuCategory,
+    showSetupModal,
+    setupLength,
+    setupWidth,
+    setupHeight,
+  ]);
 
   const loadLatestRoom = async () => {
     try {
@@ -155,19 +340,7 @@ export default function ChatPage() {
 
         // Restore placed items if present
         if (data.furniture_state && Array.isArray(data.furniture_state) && data.furniture_state.length > 0) {
-          const loadedPlaced: PlacedItem[] = data.furniture_state.map((it: any, idx: number) => ({
-            id: String(it.id || `item_${idx}`),
-            datasetId: it.datasetId,
-            name: it.name || "furniture",
-            label: it.label || it.name || "Furniture Piece",
-            category: it.category || it.name || "bed",
-            price: Number(it.price) || 15000,
-            image_url: it.image_url || "/furniture_dataset/bed/buget_10k/bed1.jpeg",
-            pos_x: Number(it.pos_x ?? (50 + (idx === 0 ? 0 : idx * 15 - 15))),
-            pos_y: Number(it.pos_y ?? (60 + (idx === 0 ? 0 : idx * 5))),
-            scale: Number(it.scale || 1.0),
-            dimensions: it.dimensions || { length_ft: it.length_ft || 6.5, width_ft: it.width_ft || 5.0 },
-          }));
+          const loadedPlaced = normalizePlacedItems(data.furniture_state);
           setPlacedItems(loadedPlaced);
         } else {
           setPlacedItems([]);
@@ -181,6 +354,7 @@ export default function ChatPage() {
       setRoom(null);
       setRoomImageSrc(null);
       setPlacedItems([]);
+      setSelectedItemId(null);
       setShowSetupModal(true);
       setMessages([
         {
@@ -202,20 +376,20 @@ export default function ChatPage() {
     const initialGreeting: ChatMessage = {
       id: "msg_1",
       sender: "AI",
-      text: `Nice to meet you! I can see your uploaded room space (${dims}). There's a generous amount of open space near the main wall.\n\nA **bed** and a **bedside night lamp** would work nicely here.`,
+      text: `Nice to meet you! I can see your uploaded room space (${dims}). There's a generous amount of open space near the main wall.\n\nA **bed**, **bedside table**, and **lamp** would work nicely here.`,
       timestamp: new Date().toISOString(),
       step: "suggest_space",
-      suggestedCategories: ["bed", "lamp", "table"],
+      suggestedCategories: ["bed", "bedside_table", "lamp"],
     };
 
     setMessages([initialGreeting]);
   };
 
-  // STEP 2 -> STEP 3: User clicks a suggestion category (e.g. Bed, Lamp, Table)
+  // STEP 2 -> STEP 3: User clicks a suggestion category (e.g. Bed, Bedside Table, Lamp)
   const handleSelectSuggestionCategory = (categoryKey: string) => {
     const catMeta = DATASET_CATEGORIES.find((c) => c.key === categoryKey) || {
       key: categoryKey,
-      label: categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1),
+      label: categoryKey.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
     };
 
     setCurrentPendingCategory(categoryKey);
@@ -252,7 +426,7 @@ export default function ChatPage() {
     const cat = categoryKey || currentPendingCategory || "bed";
     const catMeta = DATASET_CATEGORIES.find((c) => c.key === cat) || {
       key: cat,
-      label: cat.charAt(0).toUpperCase() + cat.slice(1),
+      label: cat.replace(/_/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase()),
     };
 
     setCurrentBudget(budgetValue);
@@ -287,8 +461,37 @@ export default function ChatPage() {
   // STEP 5 & 6: Drag & Drop / Click Placement onto Room Canvas
   // CRITICAL: Places ONLY the selected single furniture item!
   const handlePlaceFurnitureItem = async (item: DatasetFurnitureItem, posX?: number, posY?: number) => {
-    const dropX = posX ?? 50;
-    const dropY = posY ?? 60;
+    const catLower = (item.category || item.name || "").toLowerCase();
+    let defaultX = 50;
+    let defaultY = 60;
+
+    if (catLower.includes("bed") && !catLower.includes("table") && !catLower.includes("side")) {
+      defaultX = 50;
+      defaultY = 60;
+    } else if (catLower.includes("table") || catLower.includes("bedside") || catLower.includes("nightstand")) {
+      const existingTables = placedItems.filter(
+        (it) => (it.category || "").includes("table") || (it.category || "").includes("bedside")
+      );
+      if (existingTables.length === 0) {
+        defaultX = 26;
+        defaultY = 66;
+      } else {
+        defaultX = 74;
+        defaultY = 66;
+      }
+    } else if (catLower.includes("lamp") || catLower.includes("light")) {
+      const existingLamps = placedItems.filter((it) => (it.category || "").includes("lamp"));
+      if (existingLamps.length === 0) {
+        defaultX = 22;
+        defaultY = 56;
+      } else {
+        defaultX = 78;
+        defaultY = 56;
+      }
+    }
+
+    const dropX = posX ?? defaultX;
+    const dropY = posY ?? defaultY;
     const uniqueItemId = `item_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const initialPlacedUrl = item.extracted_image_url || item.image_url;
 
@@ -303,11 +506,13 @@ export default function ChatPage() {
       pos_x: dropX,
       pos_y: dropY,
       scale: 1.0,
+      rotation: 0,
       dimensions: item.dimensions,
     };
 
     // Update canvas state immediately with only this added item
     setPlacedItems((prev) => [...prev, newPlacedItem]);
+    setSelectedItemId(uniqueItemId);
 
     // If transparent version is not yet resolved, extract it in background and update
     if (!item.extracted_image_url) {
@@ -320,18 +525,32 @@ export default function ChatPage() {
       });
     }
 
-    // Continue the AI conversation naturally
-    const nextCategories = DATASET_CATEGORIES.filter((c) => c.key !== item.category).map((c) => c.key);
+    // Determine intuitive next recommendation in the guided sequence
+    let nextSuggested: string[] = [];
+    let nextPrompt = "";
+    if (catLower.includes("bed") && !catLower.includes("table") && !catLower.includes("side")) {
+      nextSuggested = ["bedside_table", "lamp"];
+      nextPrompt = "\n\nWould you like to add a **bedside table** next?";
+    } else if (catLower.includes("table") || catLower.includes("bedside") || catLower.includes("nightstand")) {
+      nextSuggested = ["lamp", "wardrobe"];
+      nextPrompt = "\n\nWould you like to add a **lamp**?";
+    } else if (catLower.includes("lamp") || catLower.includes("light")) {
+      nextSuggested = ["wardrobe", "chair", "desk"];
+      nextPrompt = "\n\nYour bedside setup is looking great! Would you like to add a **wardrobe**, **accent chair**, or **study desk** next?";
+    } else {
+      nextSuggested = DATASET_CATEGORIES.filter((c) => c.key !== item.category).map((c) => c.key).slice(0, 3);
+      nextPrompt = "\n\nWhat would you like to add next to your room?";
+    }
 
     const confirmationMsg: ChatMessage = {
       id: `ai_placed_${Date.now()}`,
       sender: "AI",
       text: `✅ Placed **${item.label}** (₹${item.price.toLocaleString(
         "en-IN"
-      )}) into your room at that exact position!\n\nYou can move it around on the canvas anytime. What would you like to add next?`,
+      )}) into your room at that exact position!\n\nYou can move it around on the canvas anytime.${nextPrompt}`,
       timestamp: new Date().toISOString(),
       step: "item_placed",
-      suggestedCategories: nextCategories.slice(0, 3),
+      suggestedCategories: nextSuggested,
       placedItemId: uniqueItemId,
     };
 
@@ -354,6 +573,7 @@ export default function ChatPage() {
             image_url: initialPlacedUrl,
             dimensions: item.dimensions,
             scale: 1.0,
+            rotation: 0,
           },
           pos_x: dropX,
           pos_y: dropY,
@@ -364,6 +584,7 @@ export default function ChatPage() {
           setPlacedItems((prev) =>
             prev.map((it) => (it.id === uniqueItemId ? { ...it, id: backendId } : it))
           );
+          setSelectedItemId((prev) => (prev === uniqueItemId ? backendId : prev));
         }
 
       } catch (err) {
@@ -374,16 +595,29 @@ export default function ChatPage() {
 
   // Move / Reposition placed item on canvas
   const handleUpdateItemPosition = (id: string, posX: number, posY: number) => {
-    setPlacedItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, pos_x: posX, pos_y: posY } : it))
-    );
+    setPlacedItems((prev) => {
+      const updated = prev.map((it) => (it.id === id ? { ...it, pos_x: posX, pos_y: posY } : it));
+      syncFurnitureToBackend(updated, room?.room_id);
+      return updated;
+    });
   };
 
   // Scale placed item
   const handleUpdateItemScale = (id: string, scale: number) => {
-    setPlacedItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, scale: scale } : it))
-    );
+    setPlacedItems((prev) => {
+      const updated = prev.map((it) => (it.id === id ? { ...it, scale: scale } : it));
+      syncFurnitureToBackend(updated, room?.room_id);
+      return updated;
+    });
+  };
+
+  // Rotate placed item
+  const handleUpdateItemRotation = (id: string, rotation: number) => {
+    setPlacedItems((prev) => {
+      const updated = prev.map((it) => (it.id === id ? { ...it, rotation: rotation } : it));
+      syncFurnitureToBackend(updated, room?.room_id);
+      return updated;
+    });
   };
 
   // Remove individual placed item permanently
@@ -393,6 +627,9 @@ export default function ChatPage() {
 
     // Optimistic UI update
     setPlacedItems((prev) => prev.filter((it) => it.id !== id));
+    if (selectedItemId === id) {
+      setSelectedItemId(null);
+    }
 
     // Persist deletion permanently to backend database
     if (room?.room_id) {
@@ -431,6 +668,7 @@ export default function ChatPage() {
   const handleClearAllItems = async () => {
     const previousItems = [...placedItems];
     setPlacedItems([]);
+    setSelectedItemId(null);
 
     if (room?.room_id) {
       try {
@@ -459,7 +697,7 @@ export default function ChatPage() {
         text: "Cleared all added furniture from your room canvas. We have a clean slate to design again!",
         timestamp: new Date().toISOString(),
         step: "suggest_space",
-        suggestedCategories: ["bed", "lamp", "table"],
+        suggestedCategories: ["bed", "bedside_table", "lamp"],
       },
     ]);
   };
@@ -486,11 +724,25 @@ export default function ChatPage() {
       return;
     }
 
-    // Check if user mentioned a category (e.g. "bed", "lamp", "table", "chair", "wardrobe")
+    // Check if user mentioned a category (e.g. "bed", "bedside table", "side table", "lamp", "wardrobe")
     const lower = userText.toLowerCase();
-    const matchedCategory = DATASET_CATEGORIES.find(
-      (c) => lower.includes(c.key) || lower.includes(c.label.toLowerCase())
-    );
+    const matchedCategory = DATASET_CATEGORIES.find((c) => {
+      if (c.key === "bedside_table") {
+        return (
+          lower.includes("bedside") ||
+          lower.includes("nightstand") ||
+          lower.includes("side table") ||
+          (lower.includes("table") && !lower.includes("dining"))
+        );
+      }
+      if (c.key === "bed") {
+        return lower.includes("bed") && !lower.includes("table") && !lower.includes("side");
+      }
+      if (c.key === "lamp") {
+        return lower.includes("lamp") || lower.includes("light");
+      }
+      return lower.includes(c.key) || lower.includes(c.label.toLowerCase());
+    });
 
     if (matchedCategory) {
       handleSelectSuggestionCategory(matchedCategory.key);
@@ -516,7 +768,7 @@ export default function ChatPage() {
             text: replyText,
             timestamp: new Date().toISOString(),
             step: "custom",
-            suggestedCategories: ["bed", "lamp", "table"],
+            suggestedCategories: ["bed", "bedside_table", "lamp"],
           },
         ]);
       }
@@ -526,10 +778,10 @@ export default function ChatPage() {
         {
           id: `ai_err_${Date.now()}`,
           sender: "AI",
-          text: "I'm right here with you! You can choose any furniture piece like a Bed or Night Lamp to add it to your room.",
+          text: "I'm right here with you! You can choose any furniture piece like a Bed, Bedside Table, or Night Lamp to add it to your room.",
           timestamp: new Date().toISOString(),
           step: "suggest_space",
-          suggestedCategories: ["bed", "lamp", "table"],
+          suggestedCategories: ["bed", "bedside_table", "lamp"],
         },
       ]);
     } finally {
@@ -568,6 +820,10 @@ export default function ChatPage() {
         setShowSetupModal(false);
         setUploadFile(null);
         setUploadPreview("");
+        setSelectedItemId(null);
+        try {
+          localStorage.removeItem(WORKSPACE_STORAGE_KEY);
+        } catch {}
         await loadLatestRoom();
       }
     } catch (err: any) {
@@ -576,6 +832,31 @@ export default function ChatPage() {
       setSetupLoading(false);
     }
   };
+
+  if (!mounted) {
+    return (
+      <div
+        className={`min-h-screen flex flex-col font-sans relative transition-colors duration-200 ${
+          isLight ? "bg-[#FAF8F5] text-stone-800" : "bg-slate-950 text-stone-100"
+        }`}
+      >
+        <Navbar toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+        <div className="flex flex-1 overflow-hidden relative">
+          <Sidebar isOpen={sidebarOpen} />
+          <main
+            className={`flex-1 transition-all duration-300 p-4 md:p-6 flex flex-col items-center justify-center ${
+              sidebarOpen ? "ml-64" : "ml-20"
+            }`}
+          >
+            <div className="flex flex-col items-center justify-center text-stone-400 space-y-2">
+              <div className="w-6 h-6 border-2 border-stone-800 dark:border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs">Loading Room Design Workspace...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -619,6 +900,7 @@ export default function ChatPage() {
             {/* Quick Actions & Menu trigger */}
             <div className="flex items-center gap-2.5">
               <button
+                suppressHydrationWarning
                 onClick={() => {
                   setActiveMenuCategory("bed");
                   setMenuOpen(true);
@@ -633,6 +915,7 @@ export default function ChatPage() {
               </button>
 
               <button
+                suppressHydrationWarning
                 onClick={() => setShowSetupModal(true)}
                 className="bg-stone-900 hover:bg-stone-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
               >
@@ -651,10 +934,13 @@ export default function ChatPage() {
                 onDropItem={(item, x, y) => handlePlaceFurnitureItem(item, x, y)}
                 onUpdateItemPosition={handleUpdateItemPosition}
                 onUpdateItemScale={handleUpdateItemScale}
+                onUpdateItemRotation={handleUpdateItemRotation}
                 onRemoveItem={handleRemoveItem}
                 onClearAll={handleClearAllItems}
                 isLight={isLight}
                 onZoomPreview={(url) => setZoomImage(url)}
+                selectedItemId={selectedItemId}
+                onSelectItem={setSelectedItemId}
               />
 
               {/* Space Suggestion Quick Bar below canvas */}
@@ -672,6 +958,7 @@ export default function ChatPage() {
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {DATASET_CATEGORIES.map((cat) => (
                     <button
+                      suppressHydrationWarning
                       key={cat.key}
                       onClick={() => handleSelectSuggestionCategory(cat.key)}
                       className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition cursor-pointer flex items-center gap-1.5 shadow-2xs ${
@@ -760,6 +1047,7 @@ export default function ChatPage() {
 
                               return (
                                 <button
+                                  suppressHydrationWarning
                                   key={catKey}
                                   onClick={() => handleSelectSuggestionCategory(catKey)}
                                   className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1 ${
@@ -785,6 +1073,7 @@ export default function ChatPage() {
                             <div className="grid grid-cols-2 gap-1.5">
                               {msg.budgetOptions.map((bOpt) => (
                                 <button
+                                  suppressHydrationWarning
                                   key={bOpt.value}
                                   onClick={() => handleProvideBudget(bOpt.value, msg.pendingCategory)}
                                   className={`text-left p-2 rounded-xl border transition cursor-pointer ${
@@ -810,6 +1099,7 @@ export default function ChatPage() {
                                 {msg.datasetItems.length} Options Found in Dataset:
                               </span>
                               <button
+                                suppressHydrationWarning
                                 onClick={() => {
                                   setActiveMenuCategory(msg.pendingCategory || "bed");
                                   setMenuOpen(true);
@@ -869,6 +1159,7 @@ export default function ChatPage() {
 
 
                                   <button
+                                    suppressHydrationWarning
                                     onClick={() => handlePlaceFurnitureItem(item)}
                                     className="mt-2 bg-stone-900 dark:bg-indigo-600 hover:opacity-90 text-white text-[10px] font-semibold py-1 px-2 rounded-lg transition cursor-pointer text-center"
                                   >
@@ -896,6 +1187,7 @@ export default function ChatPage() {
               <div className={`p-3 border-t ${isLight ? "bg-stone-50 border-stone-200" : "bg-slate-950 border-slate-800"}`}>
                 <div className="flex gap-2">
                   <input
+                    suppressHydrationWarning
                     type="text"
                     value={input}
                     placeholder="Ask designer (e.g. 'Show beds under 20k', 'Add side table')..."
@@ -909,6 +1201,7 @@ export default function ChatPage() {
                     }`}
                   />
                   <button
+                    suppressHydrationWarning
                     onClick={handleSendCustomMessage}
                     disabled={sending || input.trim() === ""}
                     className="bg-stone-900 hover:bg-stone-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white px-4 rounded-xl transition flex items-center justify-center disabled:opacity-40 cursor-pointer shadow-sm"
@@ -924,6 +1217,7 @@ export default function ChatPage() {
                   </span>
                   {DATASET_CATEGORIES.slice(0, 4).map((cat) => (
                     <button
+                      suppressHydrationWarning
                       key={cat.key}
                       onClick={() => handleSelectSuggestionCategory(cat.key)}
                       className={`text-[10px] font-medium px-2 py-0.5 rounded-md border transition cursor-pointer shrink-0 ${

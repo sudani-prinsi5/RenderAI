@@ -38,6 +38,7 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
       {/* Left */}
       <div className="flex items-center gap-4">
         <button
+          suppressHydrationWarning
           onClick={toggleSidebar}
           aria-label="Toggle Sidebar"
           className={`text-2xl p-1.5 rounded-lg transition ${isLight
@@ -60,6 +61,7 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
       <div className="flex items-center gap-4">
         {/* Quick Theme Toggle Button */}
         <button
+          suppressHydrationWarning
           onClick={toggleTheme}
           title={`Switch to ${isLight ? "Midnight Dark" : "Daylight Light"} Theme`}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition shadow-sm ${isLight
@@ -73,12 +75,12 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
 
         {/* User Info */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-lg shadow-md">
+          <div suppressHydrationWarning className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-lg shadow-md">
             {user?.full_name?.charAt(0).toUpperCase() || "P"}
           </div>
 
           <div className="hidden md:block text-left">
-            <p className={`font-semibold text-sm leading-tight ${isLight ? "text-slate-800" : "text-slate-200"}`}>
+            <p suppressHydrationWarning className={`font-semibold text-sm leading-tight ${isLight ? "text-slate-800" : "text-slate-200"}`}>
               {user?.full_name || "User"}
             </p>
 

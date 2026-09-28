@@ -103,6 +103,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
           {isOpen && (
             <div className="text-center px-4 mt-2.5 overflow-hidden w-full">
               <h2
+                suppressHydrationWarning
                 className={`font-bold text-sm truncate ${isLight ? "text-slate-800" : "text-slate-200"
                   }`}
               >
@@ -123,6 +124,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
             const Icon = item.icon;
             return (
               <button
+                suppressHydrationWarning
                 key={item.path}
                 onClick={() => router.push(item.path)}
                 className={`px-3.5 py-2.5 rounded-xl text-left transition-all duration-150 flex items-center gap-3 cursor-pointer group ${isLight
@@ -139,6 +141,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
           {/* Expandable Settings Menu */}
           <div>
             <button
+              suppressHydrationWarning
               onClick={toggleSettings}
               className={`w-full px-3.5 py-2.5 rounded-xl text-left transition-all duration-150 flex items-center justify-between cursor-pointer group ${isLight
                   ? "hover:bg-indigo-50/90 text-slate-700 hover:text-indigo-600 font-medium"
@@ -169,6 +172,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
                   const SubIcon = subItem.icon;
                   return (
                     <button
+                      suppressHydrationWarning
                       key={subItem.path}
                       onClick={() => router.push(subItem.path)}
                       className={`w-full px-3 py-2 rounded-xl text-left transition-all duration-150 flex items-center gap-2.5 cursor-pointer group ${
@@ -191,6 +195,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
       {/* Logout at bottom */}
       <div className="p-3 border-t border-inherit">
         <button
+          suppressHydrationWarning
           onClick={logout}
           className={`w-full px-3.5 py-2.5 rounded-xl text-left transition flex items-center gap-3 cursor-pointer ${isLight
               ? "hover:bg-rose-50 text-rose-600 hover:text-rose-700 font-semibold"

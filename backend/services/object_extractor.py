@@ -44,10 +44,13 @@ CATEGORY_SYNONYMS = {
     "couch": ["couch", "sofa", "chair"],
     "table": ["dining table", "table", "desk"],
     "side table": ["dining table", "table", "desk"],
+    "bedside_table": ["dining table", "table", "desk"],
+    "bedside table": ["dining table", "table", "desk"],
     "nightstand": ["dining table", "table", "desk"],
     "desk": ["dining table", "desk", "table", "laptop"],
     "lamp": ["lamp", "vase", "clock", "potted plant", "traffic light"],
     "night lamp": ["lamp", "vase", "clock", "potted plant", "traffic light"],
+    "bedside lamp": ["lamp", "vase", "clock", "potted plant", "traffic light"],
     "wardrobe": ["refrigerator", "bed", "wardrobe"],
     "tv": ["tv", "monitor", "laptop"],
 }
