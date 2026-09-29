@@ -6,7 +6,7 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import api from "../services/api";
 import { useTheme } from "../context/ThemeContext";
-import { FiLayers } from "react-icons/fi";
+import { FiLayers, FiDownload } from "react-icons/fi";
 
 const API_BASE = "http://127.0.0.1:5000";
 
@@ -24,6 +24,7 @@ interface FurnitureItem {
 interface Design {
   room_id: number;
   original_image: string;
+  detected_image?: string | null;
   generated_image: string | null;
   is_empty_room: boolean;
   room_length: number;
@@ -32,6 +33,7 @@ interface Design {
   status: string;
   furniture_count: number;
   furniture_items: FurnitureItem[];
+  chat_history?: any[];
   created_at: string | null;
 }
 
@@ -91,13 +93,88 @@ export default function DesignsPage() {
     return API_BASE + (path.startsWith("/") ? path : `/${path}`);
   };
 
-  const downloadImage = (path: string, name: string) => {
-    const fullUrl = getDesignImageUrl(path);
-    const link = document.createElement("a");
-    link.href = fullUrl;
-    link.download = name;
-    link.target = "_blank";
-    link.click();
+  const handleContinueChat = (design: Design) => {
+    try {
+      const WORKSPACE_STORAGE_KEY = "antigravity_workspace_state";
+      const baseRoomImage = design.original_image || design.generated_image;
+      const roomImageSrc = getDesignImageUrl(baseRoomImage);
+
+      const stateToSave = {
+        room: {
+          room_id: design.room_id,
+          original_image: design.original_image,
+          detected_image: design.detected_image,
+          generated_image: design.generated_image,
+          is_empty_room: design.is_empty_room,
+          room_length: design.room_length,
+          room_width: design.room_width,
+          room_height: design.room_height,
+          status: design.status,
+          total_objects: design.furniture_count,
+          furniture_state: design.furniture_items || [],
+        },
+        roomImageSrc,
+        placedItems: design.furniture_items || [],
+        messages: (design as any).chat_history || [],
+        setupLength: String(design.room_length || 14),
+        setupWidth: String(design.room_width || 12),
+        setupHeight: String(design.room_height || 10),
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(stateToSave));
+      localStorage.setItem("active_room_id", String(design.room_id));
+    } catch (e) {
+      console.warn("Failed to set workspace state for design:", e);
+    }
+    router.push(`/chat?room_id=${design.room_id}`);
+  };
+
+  const handleDownloadDesign = async (design: Design, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const targetImage = design.generated_image || design.original_image;
+    if (!targetImage) {
+      alert("No design image available for this room.");
+      return;
+    }
+    const filename = `room_design_${design.room_id}.png`;
+    await downloadImage(targetImage, filename);
+  };
+
+  const downloadImage = async (path: string, name: string) => {
+    try {
+      const fullUrl = getDesignImageUrl(path);
+      if (fullUrl.startsWith("data:") || fullUrl.startsWith("blob:")) {
+        const link = document.createElement("a");
+        link.href = fullUrl;
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+
+      // Fetch blob to guarantee real file download directly to user's device
+      const response = await fetch(fullUrl, { mode: "cors" });
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+    } catch {
+      // Direct anchor click fallback
+      const fullUrl = getDesignImageUrl(path);
+      const link = document.createElement("a");
+      link.href = fullUrl;
+      link.download = name;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   return (
@@ -230,11 +307,38 @@ export default function DesignsPage() {
                       )}
                     </div>
 
-                    {design.created_at && (
-                      <p className={`text-[11px] pt-2 border-t ${isLight ? "border-slate-100 text-slate-400" : "border-slate-800/80 text-slate-500"}`}>
-                        {new Date(design.created_at).toLocaleString()}
-                      </p>
-                    )}
+                    <div className="flex items-center justify-between pt-2 border-t border-inherit gap-2">
+                      {design.created_at ? (
+                        <p className={`text-[11px] ${isLight ? "text-slate-400" : "text-slate-500"}`}>
+                          {new Date(design.created_at).toLocaleDateString()}
+                        </p>
+                      ) : <span />}
+                      <div className="flex items-center gap-2 ml-auto">
+                        <button
+                          onClick={(e) => handleDownloadDesign(design, e)}
+                          title={`Download final saved design for Room #${design.room_id}`}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer border flex items-center gap-1.5 ${
+                            isLight
+                              ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                              : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
+                          }`}
+                        >
+                          <FiDownload className="w-3.5 h-3.5" />
+                          <span>Download</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleContinueChat(design);
+                          }}
+                          title={`Continue AI Chat with Room #${design.room_id}`}
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition shadow cursor-pointer flex items-center gap-1"
+                        >
+                          <span>Continue Chat</span>
+                          <span>➔</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -354,10 +458,11 @@ export default function DesignsPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => router.push("/chat")}
-                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition shadow cursor-pointer"
+                    onClick={() => handleContinueChat(selected)}
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition shadow cursor-pointer flex items-center gap-1.5"
                   >
-                    Continue in AI Chat ➔
+                    <span>Continue Chat</span>
+                    <span>➔</span>
                   </button>
                   <button
                     onClick={() => setSelected(null)}

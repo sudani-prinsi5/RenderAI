@@ -53,6 +53,9 @@ interface RoomCanvasProps {
   selectedItemId?: string | null;
   onSelectItem?: (id: string | null) => void;
   onCompositeChange?: (dataUrl: string) => void;
+  detectedObjects?: any[];
+  onRemoveDetectedObject?: (objectSpec: any) => void;
+  removingObjectId?: string | null;
 }
 
 export default function RoomCanvas({
@@ -71,6 +74,9 @@ export default function RoomCanvas({
   selectedItemId: controlledSelectedItemId,
   onSelectItem,
   onCompositeChange,
+  detectedObjects = [],
+  onRemoveDetectedObject,
+  removingObjectId,
 }: RoomCanvasProps) {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -83,6 +89,8 @@ export default function RoomCanvas({
     }
     setInternalSelectedItemId(id);
   };
+
+  const [selectedDetectedId, setSelectedDetectedId] = useState<string | null>(null);
 
   // Moving existing placed item on canvas
   const [draggingPlacedId, setDraggingPlacedId] = useState<string | null>(null);
@@ -406,7 +414,23 @@ export default function RoomCanvas({
         onDrop={handleDrop}
         onMouseMove={handleMouseMoveCanvas}
         onMouseUp={handleMouseUpCanvas}
-        onClick={() => setSelectedItemId(null)}
+        onClick={(e) => {
+          setSelectedItemId(null);
+          setSelectedDetectedId(null);
+          if (canvasContainerRef.current && detectedObjects && detectedObjects.length > 0) {
+            const rect = canvasContainerRef.current.getBoundingClientRect();
+            const clickXPct = ((e.clientX - rect.left) / rect.width) * 100;
+            const clickYPct = ((e.clientY - rect.top) / rect.height) * 100;
+            const matched = detectedObjects.find((obj) => {
+              if (!obj.bbox_pct) return false;
+              const { x, y, width, height } = obj.bbox_pct;
+              return clickXPct >= x && clickXPct <= x + width && clickYPct >= y && clickYPct <= y + height;
+            });
+            if (matched) {
+              setSelectedDetectedId(matched.id);
+            }
+          }
+        }}
         className={`relative w-full aspect-[16/10] sm:aspect-[16/9] md:aspect-[16/9.5] overflow-hidden select-none transition-colors ${
           isLight ? "bg-stone-100" : "bg-slate-950"
         } ${isDragOver ? "ring-4 ring-indigo-500/40" : ""}`}
@@ -439,6 +463,85 @@ export default function RoomCanvas({
               <FiPlus className="text-indigo-400 text-lg" />
               <span>Drop Furniture Item Here</span>
             </div>
+          </div>
+        )}
+
+        {/* Detected Existing Furniture Objects in Room Photo (Interactive 1-Click Clean Removal) */}
+        {detectedObjects && detectedObjects.length > 0 && detectedObjects.map((obj) => {
+          const isRemovingThis = removingObjectId === obj.id;
+          const isSelected = selectedDetectedId === obj.id;
+          const bx = obj.bbox_pct?.x ?? 0;
+          const by = obj.bbox_pct?.y ?? 0;
+          const bw = obj.bbox_pct?.width ?? 10;
+          const bh = obj.bbox_pct?.height ?? 10;
+          const x = obj.bbox_pct?.center_x ?? (bx + bw / 2);
+          const y = obj.bbox_pct?.center_y ?? (by + bh / 2);
+
+          return (
+            <React.Fragment key={obj.id}>
+              {/* Interactive Bounding Area Overlay */}
+              <div
+                style={{
+                  left: `${bx}%`,
+                  top: `${by}%`,
+                  width: `${bw}%`,
+                  height: `${bh}%`,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedDetectedId(obj.id);
+                }}
+                title={`Selected: ${obj.label}. Click 'Remove' to cleanly remove it from the room.`}
+                className={`absolute z-24 rounded-lg pointer-events-auto cursor-pointer transition-all duration-150 ${
+                  isSelected
+                    ? "border-2 border-dashed border-rose-500 bg-rose-500/10 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+                    : "border border-dashed border-white/30 hover:border-indigo-400 hover:bg-indigo-500/10"
+                }`}
+              />
+
+              {/* Centered Removal Action Badge */}
+              <div
+                style={{
+                  left: `${x}%`,
+                  top: `${y}%`,
+                  transform: "translate(-50%, -50%)",
+                }}
+                className="absolute z-26 pointer-events-auto group animate-in fade-in duration-200"
+              >
+                <button
+                  suppressHydrationWarning
+                  disabled={Boolean(removingObjectId)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveDetectedObject?.(obj);
+                  }}
+                  title={`Click to cleanly remove ONLY this ${obj.label} from the room photo`}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold shadow-xl border backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-50 ${
+                    isSelected || isRemovingThis
+                      ? "bg-rose-600 text-white border-rose-400 shadow-rose-600/40"
+                      : isLight
+                      ? "bg-slate-900/90 hover:bg-rose-600 text-white border-white/40 shadow-slate-900/30"
+                      : "bg-slate-900/95 hover:bg-rose-600 text-white border-indigo-400/40 shadow-black/70"
+                  }`}
+                >
+                  {isRemovingThis ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <span className="text-xs">✂️</span>
+                  )}
+                  <span>Remove {obj.label}</span>
+                </button>
+              </div>
+            </React.Fragment>
+          );
+        })}
+
+        {/* Inpainting / Object Removal Active Overlay */}
+        {removingObjectId && (
+          <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-xs flex flex-col items-center justify-center text-white z-40 animate-in fade-in duration-200">
+            <div className="w-9 h-9 border-3 border-indigo-400 border-t-transparent rounded-full animate-spin mb-2.5"></div>
+            <p className="text-xs font-bold tracking-wide">Removing Selected Object & Infilling Room Structure...</p>
+            <p className="text-[11px] text-stone-300 mt-1">Preserving walls, floor, lighting, and untouched room objects</p>
           </div>
         )}
 

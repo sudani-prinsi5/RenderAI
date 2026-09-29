@@ -98,6 +98,8 @@ interface RoomData {
   budget?: number;
   furniture_state?: any[];
   chat_history?: any[];
+  detected_objects_list?: any[];
+  detected_objects?: any;
 }
 
 export default function ChatPage() {
@@ -111,6 +113,8 @@ export default function ChatPage() {
   const [roomImageSrc, setRoomImageSrc] = useState<string | null>(null);
   const [placedItems, setPlacedItems] = useState<PlacedItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [detectedObjects, setDetectedObjects] = useState<any[]>([]);
+  const [removingObjectId, setRemovingObjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRestored, setIsRestored] = useState(false);
 
@@ -182,45 +186,61 @@ export default function ChatPage() {
   // Restore workspace state on initial mount
   useEffect(() => {
     let restoredFromStorage = false;
+    let targetRoomId: number | null = null;
+    try {
+      if (typeof window !== "undefined") {
+        const urlParams = new URLSearchParams(window.location.search);
+        const qId = urlParams.get("room_id") || urlParams.get("roomId");
+        if (qId) {
+          targetRoomId = Number(qId);
+        }
+      }
+    } catch {}
+
     try {
       const savedStr = localStorage.getItem(WORKSPACE_STORAGE_KEY);
       if (savedStr) {
         const saved = JSON.parse(savedStr);
         if (saved && typeof saved === "object") {
-          const hasRoom = Boolean(saved.room || saved.roomImageSrc);
-          const hasItems = Array.isArray(saved.placedItems) && saved.placedItems.length > 0;
-          const hasMessages = Array.isArray(saved.messages) && saved.messages.length > 0;
+          const savedRoomId = saved.room?.room_id;
+          const matchesTarget = !targetRoomId || savedRoomId === targetRoomId;
 
-          if (hasRoom || hasItems || hasMessages) {
-            if (saved.room) setRoom(saved.room);
-            if (saved.roomImageSrc) setRoomImageSrc(saved.roomImageSrc);
-            if (Array.isArray(saved.placedItems)) {
-              setPlacedItems(normalizePlacedItems(saved.placedItems));
-            }
-            if (Array.isArray(saved.messages) && saved.messages.length > 0) {
-              setMessages(saved.messages);
-            }
-            if (saved.selectedItemId !== undefined) {
-              setSelectedItemId(saved.selectedItemId);
-            }
-            if (saved.currentPendingCategory) {
-              setCurrentPendingCategory(saved.currentPendingCategory);
-            }
-            if (typeof saved.currentBudget === "number") {
-              setCurrentBudget(saved.currentBudget);
-            }
-            if (saved.activeMenuCategory) {
-              setActiveMenuCategory(saved.activeMenuCategory);
-            }
-            if (saved.setupLength) setSetupLength(saved.setupLength);
-            if (saved.setupWidth) setSetupWidth(saved.setupWidth);
-            if (saved.setupHeight) setSetupHeight(saved.setupHeight);
-            if (typeof saved.showSetupModal === "boolean") {
-              setShowSetupModal(saved.showSetupModal);
-            }
+          if (matchesTarget) {
+            const hasRoom = Boolean(saved.room || saved.roomImageSrc);
+            const hasItems = Array.isArray(saved.placedItems) && saved.placedItems.length > 0;
+            const hasMessages = Array.isArray(saved.messages) && saved.messages.length > 0;
 
-            setLoading(false);
-            restoredFromStorage = true;
+            if (hasRoom || hasItems || hasMessages) {
+              if (saved.room) setRoom(saved.room);
+              if (saved.roomImageSrc) setRoomImageSrc(saved.roomImageSrc);
+              if (Array.isArray(saved.placedItems)) {
+                setPlacedItems(normalizePlacedItems(saved.placedItems));
+              }
+              if (Array.isArray(saved.messages) && saved.messages.length > 0) {
+                setMessages(saved.messages);
+              }
+              if (saved.selectedItemId !== undefined) {
+                setSelectedItemId(saved.selectedItemId);
+              }
+              if (saved.currentPendingCategory) {
+                setCurrentPendingCategory(saved.currentPendingCategory);
+              }
+              if (typeof saved.currentBudget === "number") {
+                setCurrentBudget(saved.currentBudget);
+              }
+              if (saved.activeMenuCategory) {
+                setActiveMenuCategory(saved.activeMenuCategory);
+              }
+              if (saved.setupLength) setSetupLength(saved.setupLength);
+              if (saved.setupWidth) setSetupWidth(saved.setupWidth);
+              if (saved.setupHeight) setSetupHeight(saved.setupHeight);
+              if (typeof saved.showSetupModal === "boolean") {
+                setShowSetupModal(saved.showSetupModal);
+              }
+
+              setLoading(false);
+              restoredFromStorage = true;
+            }
           }
         }
       }
@@ -230,7 +250,9 @@ export default function ChatPage() {
 
     setIsRestored(true);
 
-    if (!restoredFromStorage) {
+    if (targetRoomId) {
+      loadLatestRoom(targetRoomId);
+    } else if (!restoredFromStorage) {
       loadLatestRoom();
     }
   }, []);
@@ -316,27 +338,26 @@ export default function ChatPage() {
     setupHeight,
   ]);
 
-  const loadLatestRoom = async () => {
+  const loadLatestRoom = async (targetRoomId?: number) => {
     try {
       setLoading(true);
       const userId = getUserId();
-      const params = userId ? { user_id: userId } : {};
+      const params: any = userId ? { user_id: userId } : {};
+      if (targetRoomId) {
+        params.room_id = targetRoomId;
+      }
       const res = await api.get("/latest-room", { params });
 
       if (res.data.success) {
         const data = res.data as RoomData;
         setRoom(data);
 
-        // Set room image
-        if (data.original_image) {
-          const src = data.original_image.startsWith("http")
-            ? data.original_image
-            : API_BASE + data.original_image;
-          setRoomImageSrc(src);
-        } else if (data.detected_image) {
-          const src = data.detected_image.startsWith("http")
-            ? data.detected_image
-            : API_BASE + data.detected_image;
+        // Set room image: prioritize original_image / cleaned room, fallback to detected/generated
+        const imagePath = data.original_image || data.detected_image || (data as any).generated_image;
+        if (imagePath) {
+          const src = imagePath.startsWith("http") || imagePath.startsWith("data:")
+            ? imagePath
+            : API_BASE + (imagePath.startsWith("/") ? imagePath : `/${imagePath}`);
           setRoomImageSrc(src);
         }
 
@@ -348,8 +369,18 @@ export default function ChatPage() {
           setPlacedItems([]);
         }
 
-        // Initialize natural AI interior designer conversation
-        initializeDesignerChat(data);
+        if (data.detected_objects_list && Array.isArray(data.detected_objects_list)) {
+          setDetectedObjects(data.detected_objects_list);
+        } else {
+          setDetectedObjects([]);
+        }
+
+        // Restore chat history if exists, otherwise initialize natural chat
+        if (data.chat_history && Array.isArray(data.chat_history) && data.chat_history.length > 0) {
+          setMessages(data.chat_history);
+        } else {
+          initializeDesignerChat(data);
+        }
       }
     } catch {
       // No room uploaded yet -> show setup modal
@@ -640,6 +671,45 @@ export default function ChatPage() {
     }
   };
 
+  // Cleanly remove an existing detected furniture piece from the room photo with natural inpainting
+  const handleRemoveDetectedObject = async (targetObj: any) => {
+    if (!room?.room_id) return;
+    try {
+      setRemovingObjectId(targetObj.id);
+      const res = await api.post("/chat/remove-room-object", {
+        room_id: room.room_id,
+        user_id: getUserId(),
+        target_object: targetObj,
+      });
+
+      if (res.data?.success) {
+        const newPath = res.data.cleaned_image_path;
+        const fullUrl = newPath.startsWith("http") ? newPath : API_BASE + newPath;
+        setRoomImageSrc(fullUrl);
+        setDetectedObjects(res.data.remaining_objects || []);
+
+        if (res.data.room) {
+          setRoom(res.data.room);
+        }
+
+        const aiNoticeMsg: ChatMessage = {
+          id: `ai_clean_${Date.now()}`,
+          sender: "AI",
+          text: `✨ Cleanly removed **${res.data.removed_object || targetObj.label}** from your room image!\n\nThe wall and floor textures were seamlessly reconstructed. You can now place any new furniture piece from the dataset into this space.`,
+          timestamp: new Date().toISOString(),
+          step: "custom",
+          suggestedCategories: ["bed", "table", "lamp"],
+        };
+        setMessages((prev) => [...prev, aiNoticeMsg]);
+      }
+    } catch (err: any) {
+      console.error("Error removing object from room photo:", err);
+      alert(err.response?.data?.message || "Failed to remove object. Please try again.");
+    } finally {
+      setRemovingObjectId(null);
+    }
+  };
+
   // Remove individual placed item permanently
   const handleRemoveItem = async (id: string) => {
     const itemToRemove = placedItems.find((it) => it.id === id);
@@ -841,6 +911,9 @@ export default function ChatPage() {
         setUploadFile(null);
         setUploadPreview("");
         setSelectedItemId(null);
+        if (res.data.detected_objects_list) {
+          setDetectedObjects(res.data.detected_objects_list);
+        }
         try {
           localStorage.removeItem(WORKSPACE_STORAGE_KEY);
         } catch {}
@@ -964,6 +1037,9 @@ export default function ChatPage() {
                 selectedItemId={selectedItemId}
                 onSelectItem={setSelectedItemId}
                 onCompositeChange={handleCompositeChange}
+                detectedObjects={detectedObjects}
+                onRemoveDetectedObject={handleRemoveDetectedObject}
+                removingObjectId={removingObjectId}
               />
 
               {/* Space Suggestion Quick Bar below canvas */}
@@ -1033,9 +1109,9 @@ export default function ChatPage() {
                     <p className="text-xs">Analyzing room layout...</p>
                   </div>
                 ) : (
-                  messages.map((msg) => (
+                  messages.map((msg, idx) => (
                     <div
-                      key={msg.id}
+                      key={msg.id ? `${msg.id}_${idx}` : `msg_${idx}`}
                       className={`flex flex-col ${msg.sender === "You" ? "items-end" : "items-start"}`}
                     >
                       {/* Sender label */}
@@ -1061,7 +1137,7 @@ export default function ChatPage() {
                         {/* Interactive Suggestion Chips inside conversation (Step 2) */}
                         {msg.suggestedCategories && msg.suggestedCategories.length > 0 && (
                           <div className={`mt-3 pt-2.5 border-t flex flex-wrap gap-1.5 ${isLight ? "border-stone-200" : "border-slate-700"}`}>
-                            {msg.suggestedCategories.map((catKey) => {
+                            {msg.suggestedCategories.map((catKey, cIdx) => {
                               const normKey = catKey === "bedside_table" ? "table" : catKey;
                               const meta = DATASET_CATEGORIES.find((c) => c.key === normKey) || {
                                 key: normKey,
@@ -1072,7 +1148,7 @@ export default function ChatPage() {
                               return (
                                 <button
                                   suppressHydrationWarning
-                                  key={catKey}
+                                  key={`${catKey}_${cIdx}`}
                                   onClick={() => handleSelectSuggestionCategory(catKey)}
                                   className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1 ${
                                     isLight
@@ -1095,10 +1171,10 @@ export default function ChatPage() {
                               Select Budget Bracket:
                             </p>
                             <div className="grid grid-cols-2 gap-1.5">
-                              {msg.budgetOptions.map((bOpt) => (
+                              {msg.budgetOptions.map((bOpt, bIdx) => (
                                 <button
                                   suppressHydrationWarning
-                                  key={bOpt.value}
+                                  key={`${bOpt.value}_${bIdx}`}
                                   onClick={() => handleProvideBudget(bOpt.value, msg.pendingCategory)}
                                   className={`text-left p-2 rounded-xl border transition cursor-pointer ${
                                     isLight
@@ -1135,9 +1211,9 @@ export default function ChatPage() {
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {msg.datasetItems.slice(0, 4).map((item) => (
+                              {msg.datasetItems.slice(0, 4).map((item, itemIdx) => (
                                 <div
-                                  key={item.id}
+                                  key={item.id ? `${item.id}_${itemIdx}` : `dataset_item_${itemIdx}`}
                                   draggable
                                   onDragStart={(e) => {
                                     setDraggedItem(item);

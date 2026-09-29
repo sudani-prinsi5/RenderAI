@@ -19,6 +19,7 @@ from services.chat_ai import format_breakdown_reply, process_message
 from services.furniture_catalog import BED_TYPES, build_gemini_link, generate_room_options
 from services.image_generator import generate_design_image, generate_room_variations
 from services.object_extractor import extract_and_segment_object
+from services.room_cleaner import detect_room_objects, remove_room_object
 
 chat = Blueprint("chat", __name__)
 
@@ -117,13 +118,27 @@ def _serialize_room(room):
     used_amount = sum(float(it.get("price", 0.0)) for it in furniture_state)
     remaining_budget = max(0.0, budget - used_amount)
 
+    details = _load_json(room.detection_details, {})
+    detected_objects_list = []
+    if isinstance(details, dict):
+        detected_objects_list = details.get("detected_objects", [])
+    elif isinstance(details, list):
+        detected_objects_list = details
+
+    if not detected_objects_list and room.original_image_path and not room.is_empty_room:
+        try:
+            detected_objects_list = detect_room_objects(room.original_image_path)
+        except Exception:
+            pass
+
     return {
         "room_id": room.id,
         "original_image": room.original_image_path,
         "detected_image": room.detected_image_path,
         "objects": room.detected_objects,
+        "detected_objects_list": detected_objects_list,
         "object_counts": _load_json(room.object_counts, {}),
-        "total_objects": room.total_objects,
+        "total_objects": room.total_objects or len(detected_objects_list),
         "is_empty_room": room.is_empty_room,
         "room_length": room.room_length or 14.0,
         "room_width": room.room_width or 12.0,
@@ -157,10 +172,17 @@ def _get_room(room_id=None, user_id=None):
 
 @chat.route("/latest-room", methods=["GET"])
 def latest_room():
+    room_id = request.args.get("room_id", type=int)
     user_id = request.args.get("user_id", type=int)
-    room = _get_room(user_id=user_id) if user_id else _get_room()
+    if room_id:
+        room = _get_room(room_id=room_id, user_id=user_id) or _get_room(room_id=room_id)
+    elif user_id:
+        room = _get_room(user_id=user_id)
+    else:
+        room = _get_room()
+
     if room is None:
-        return jsonify({"success": False, "message": "No room uploaded."}), 404
+        return jsonify({"success": False, "message": "No room found."}), 404
 
     data = _serialize_room(room)
     data["success"] = True
@@ -198,6 +220,7 @@ def init_room():
         original_image_path = None
         detected_image_path = None
 
+        detected_objects_found = []
         if image_file:
             filename = secure_filename(f"room_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{image_file.filename}")
             filepath = os.path.join(UPLOAD_FOLDER, filename)
@@ -205,6 +228,12 @@ def init_room():
             original_image_name = filename
             original_image_path = f"/uploads/{filename}"
             detected_image_path = original_image_path
+            
+            if not is_empty_room:
+                try:
+                    detected_objects_found = detect_room_objects(filepath)
+                except Exception as e:
+                    print(f"Object detection error during init-room: {e}")
         else:
             is_empty_room = True
 
@@ -217,12 +246,20 @@ def init_room():
             )
             step = "ask_room_type"
         else:
-            welcome_text = (
-                f"I've analyzed your uploaded room photo ({room_length}×{room_width}×{room_height} ft). "
-                f"Your existing room walls, floors, and architecture are safely preserved! 🛋️\n\n"
-                f"**What type of room makeover would you like to create?**\n"
-                f"(e.g., Master Bedroom, Living Room, Kids Bedroom, or Office)."
-            )
+            if detected_objects_found:
+                obj_labels = ", ".join(o["label"] for o in detected_objects_found[:4])
+                welcome_text = (
+                    f"I've analyzed your uploaded room space ({room_length}×{room_width}×{room_height} ft). 🛋️\n\n"
+                    f"I detected existing furniture: **{obj_labels}**.\n\n"
+                    f"You can click on any existing furniture object in your room canvas to cleanly remove it, or start adding new designer pieces directly."
+                )
+            else:
+                welcome_text = (
+                    f"I've analyzed your uploaded room photo ({room_length}×{room_width}×{room_height} ft). "
+                    f"Your existing room walls, floors, and architecture are safely preserved! 🛋️\n\n"
+                    f"**What type of room makeover would you like to create?**\n"
+                    f"(e.g., Master Bedroom, Living Room, Kids Bedroom, or Office)."
+                )
             step = "ask_room_type"
 
         initial_chat = [
@@ -240,11 +277,11 @@ def init_room():
             original_image_path=original_image_path,
             detected_image_name=original_image_name,
             detected_image_path=detected_image_path,
-            detected_objects="Empty room" if is_empty_room else "Custom room",
-            total_objects=0,
+            detected_objects="Empty room" if is_empty_room else (",".join(o["name"] for o in detected_objects_found) if detected_objects_found else "Custom room"),
+            total_objects=len(detected_objects_found),
             status="Empty Room" if is_empty_room else "Uploaded",
             object_counts=json.dumps({}),
-            detection_details=json.dumps({"selected_room_type": "master_bedroom", "cached_options": []}),
+            detection_details=json.dumps({"selected_room_type": "master_bedroom", "detected_objects": detected_objects_found}),
             room_length=room_length,
             room_width=room_width,
             room_height=room_height,
@@ -261,6 +298,7 @@ def init_room():
         serialized["success"] = True
         serialized["initial_message"] = welcome_text
         serialized["step"] = step
+        serialized["detected_objects_list"] = detected_objects_found
 
         return jsonify(serialized), 201
 
@@ -927,4 +965,104 @@ def extract_furniture():
             "item_id": item_id,
         })
     except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@chat.route("/chat/detect-objects", methods=["POST", "GET"])
+def detect_objects_endpoint():
+    """
+    Detects and segments all furniture objects in the active room photo.
+    """
+    try:
+        if request.method == "POST":
+            data = request.get_json() or {}
+            room_id = data.get("room_id")
+            user_id = data.get("user_id")
+            image_path = data.get("image_path")
+        else:
+            room_id = request.args.get("room_id", type=int)
+            user_id = request.args.get("user_id", type=int)
+            image_path = request.args.get("image_path")
+
+        room = _get_room(room_id, user_id)
+        target_path = image_path or (room.original_image_path if room else None)
+
+        detected = detect_room_objects(target_path) if target_path else []
+
+        if room and detected:
+            details = _load_json(room.detection_details, {})
+            if isinstance(details, dict):
+                details["detected_objects"] = detected
+                room.detection_details = json.dumps(details)
+            else:
+                room.detection_details = json.dumps({"detected_objects": detected})
+            db.session.commit()
+
+        return jsonify({"success": True, "detected_objects": detected})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@chat.route("/chat/remove-room-object", methods=["POST"])
+def remove_room_object_endpoint():
+    """
+    Cleanly removes ONLY the selected furniture object from the uploaded room photo
+    using AI inpainting and texture reconstruction.
+    """
+    try:
+        data = request.get_json() or {}
+        room_id = data.get("room_id")
+        user_id = data.get("user_id")
+        target_object = data.get("target_object") or {}
+
+        room = _get_room(room_id, user_id)
+        if room is None:
+            return jsonify({"success": False, "message": "Room not found."}), 404
+
+        if not room.original_image_path:
+            return jsonify({"success": False, "message": "No room image uploaded."}), 400
+
+        res = remove_room_object(room.original_image_path, target_object)
+
+        # Update room records with the infilled, cleaned room photo
+        room.original_image_path = res["cleaned_image_path"]
+        room.original_image_name = res["cleaned_image_name"]
+        room.detected_image_path = res["cleaned_image_path"]
+        room.detected_image_name = res["cleaned_image_name"]
+
+        remaining = res.get("remaining_objects", [])
+        room.total_objects = len(remaining)
+        room.detected_objects = ",".join(o["name"] for o in remaining) if remaining else "Cleaned room"
+
+        details = _load_json(room.detection_details, {})
+        if isinstance(details, dict):
+            details["detected_objects"] = remaining
+            room.detection_details = json.dumps(details)
+        else:
+            room.detection_details = json.dumps({"detected_objects": remaining})
+
+        # Add assistant message to chat history
+        removed_label = res.get("removed_object") or target_object.get("label") or "Selected Furniture"
+        chat_history = _load_json(room.chat_history, [])
+        chat_history.append({
+            "sender": "AI",
+            "text": f"✨ Cleanly removed **{removed_label}** from your room image! The floor and wall areas were seamlessly infilled and reconstructed.",
+            "timestamp": datetime.utcnow().isoformat(),
+            "step": "object_removed",
+        })
+        room.chat_history = json.dumps(chat_history)
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"Successfully removed {removed_label}",
+            "cleaned_image_path": res["cleaned_image_path"],
+            "remaining_objects": remaining,
+            "removed_object": removed_label,
+            "room": _serialize_room(room),
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in remove_room_object_endpoint: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
