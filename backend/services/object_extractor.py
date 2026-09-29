@@ -92,13 +92,14 @@ def _resolve_image(source_path_or_url):
     possible_paths.append(os.path.join(BASE_DIR, rel_src))
     # 4. If path starts with furniture_dataset
     if "furniture_dataset" in rel_src:
-        sub = rel_src[rel_src.find("furniture_dataset"):]
+        sub = rel_src[rel_src.find("furniture_dataset"):].replace("/", os.sep).replace("\\", os.sep)
         possible_paths.append(os.path.join(ROOT_DIR, sub))
         possible_paths.append(os.path.join(ROOT_DIR, "frontend", "public", sub))
     # 5. If path starts with uploads
     if "uploads" in rel_src:
-        sub = rel_src[rel_src.find("uploads"):]
+        sub = rel_src[rel_src.find("uploads"):].replace("/", os.sep).replace("\\", os.sep)
         possible_paths.append(os.path.join(ROOT_DIR, sub))
+        possible_paths.append(os.path.join(BASE_DIR, sub))
     # 6. If path is in assets
     possible_paths.append(os.path.join(BASE_DIR, "assets", os.path.basename(src)))
 

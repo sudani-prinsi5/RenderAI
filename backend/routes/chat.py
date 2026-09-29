@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+import base64
 from datetime import datetime
 from flask import Blueprint, jsonify, request
 from werkzeug.utils import secure_filename
@@ -742,15 +743,73 @@ def remove_product():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
+def _save_composite_image(room, composite_data):
+    if not composite_data or not isinstance(composite_data, str):
+        return None
+    try:
+        if composite_data.startswith("data:image"):
+            header, encoded = composite_data.split(",", 1)
+            file_ext = "png" if "png" in header else "jpg"
+            img_data = base64.b64decode(encoded)
+            filename = f"design_room_{room.id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}.{file_ext}"
+            out_dir = os.path.join(UPLOAD_FOLDER, "generated")
+            os.makedirs(out_dir, exist_ok=True)
+            out_path = os.path.join(out_dir, filename)
+            with open(out_path, "wb") as f:
+                f.write(img_data)
+            room.generated_image_path = f"/uploads/generated/{filename}"
+            room.generated_image_name = filename
+            return room.generated_image_path
+    except Exception as e:
+        print(f"Error saving composite image: {e}")
+    return None
+
+
 @chat.route("/chat/update-furniture-state", methods=["POST"])
 def update_furniture_state():
     """
     Updates the position, scale, and rotation coordinates of furniture items in the room.
+    Also stores the latest composite room design image if provided.
     """
     try:
         data = request.get_json() or {}
         room_id = data.get("room_id")
         user_id = data.get("user_id")
+        furniture_state = data.get("furniture_state")
+        composite_image = data.get("composite_image") or data.get("generated_image")
+
+        room = _get_room(room_id, user_id)
+        if room is None:
+            return jsonify({"success": False, "message": "Room not found."}), 404
+
+        if furniture_state is not None and isinstance(furniture_state, list):
+            room.furniture_state = json.dumps(furniture_state)
+
+        if composite_image:
+            _save_composite_image(room, composite_image)
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "furniture_state": furniture_state,
+            "generated_image": room.generated_image_path,
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@chat.route("/chat/save-composite-image", methods=["POST"])
+def save_composite_image_endpoint():
+    """
+    Stores the latest composed room design image with all placed furniture.
+    """
+    try:
+        data = request.get_json() or {}
+        room_id = data.get("room_id")
+        user_id = data.get("user_id")
+        composite_image = data.get("composite_image") or data.get("generated_image")
         furniture_state = data.get("furniture_state")
 
         room = _get_room(room_id, user_id)
@@ -759,9 +818,14 @@ def update_furniture_state():
 
         if furniture_state is not None and isinstance(furniture_state, list):
             room.furniture_state = json.dumps(furniture_state)
-            db.session.commit()
 
-        return jsonify({"success": True, "furniture_state": furniture_state})
+        saved_path = _save_composite_image(room, composite_image)
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "generated_image": room.generated_image_path or saved_path,
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": str(e)}), 500

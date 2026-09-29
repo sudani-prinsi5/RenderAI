@@ -44,7 +44,7 @@ const normalizePlacedItems = (items: any[]): PlacedItem[] => {
     if (cat.includes("lamp") || cat.includes("light")) {
       defaultFallbackUrl = "/furniture_dataset/lamp/buget_10k/lamp1.jpg";
     } else if (cat.includes("table") || cat.includes("bedside") || cat.includes("nightstand")) {
-      defaultFallbackUrl = "/furniture_dataset/bedside_table/buget_10k/table1.jpg";
+      defaultFallbackUrl = "/furniture_dataset/table/buget_10k/table1.jpg";
     }
 
     return {
@@ -59,7 +59,9 @@ const normalizePlacedItems = (items: any[]): PlacedItem[] => {
       pos_y: Number(it.pos_y ?? (60 + (idx === 0 ? 0 : idx * 5))),
       scale: Number(it.scale || 1.0),
       rotation: Number(it.rotation || 0),
-      dimensions: it.dimensions || { length_ft: it.length_ft || 6.5, width_ft: it.width_ft || 5.0 },
+      dimensions: it.dimensions || { length_ft: it.length_ft || 6.5, width_ft: it.width_ft || 5.0, height_ft: it.height_ft || 2.8 },
+      material: it.material,
+      description: it.description,
     };
   });
 };
@@ -376,23 +378,24 @@ export default function ChatPage() {
     const initialGreeting: ChatMessage = {
       id: "msg_1",
       sender: "AI",
-      text: `Nice to meet you! I can see your uploaded room space (${dims}). There's a generous amount of open space near the main wall.\n\nA **bed**, **bedside table**, and **lamp** would work nicely here.`,
+      text: `Nice to meet you! I can see your uploaded room space (${dims}). There's a generous amount of open space near the main wall.\n\nA **bed**, **table**, and **lamp** would work nicely here.`,
       timestamp: new Date().toISOString(),
       step: "suggest_space",
-      suggestedCategories: ["bed", "bedside_table", "lamp"],
+      suggestedCategories: ["bed", "table", "lamp"],
     };
 
     setMessages([initialGreeting]);
   };
 
-  // STEP 2 -> STEP 3: User clicks a suggestion category (e.g. Bed, Bedside Table, Lamp)
+  // STEP 2 -> STEP 3: User clicks a suggestion category (e.g. Bed, Table, Lamp)
   const handleSelectSuggestionCategory = (categoryKey: string) => {
-    const catMeta = DATASET_CATEGORIES.find((c) => c.key === categoryKey) || {
-      key: categoryKey,
-      label: categoryKey.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+    const normalizedKey = categoryKey === "bedside_table" ? "table" : categoryKey;
+    const catMeta = DATASET_CATEGORIES.find((c) => c.key === normalizedKey) || {
+      key: normalizedKey,
+      label: normalizedKey === "bedside_table" || normalizedKey === "table" ? "Table" : normalizedKey.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
     };
 
-    setCurrentPendingCategory(categoryKey);
+    setCurrentPendingCategory(normalizedKey);
 
     // 1. User Message
     const userMsg: ChatMessage = {
@@ -508,6 +511,8 @@ export default function ChatPage() {
       scale: 1.0,
       rotation: 0,
       dimensions: item.dimensions,
+      material: item.material,
+      description: item.description,
     };
 
     // Update canvas state immediately with only this added item
@@ -529,8 +534,8 @@ export default function ChatPage() {
     let nextSuggested: string[] = [];
     let nextPrompt = "";
     if (catLower.includes("bed") && !catLower.includes("table") && !catLower.includes("side")) {
-      nextSuggested = ["bedside_table", "lamp"];
-      nextPrompt = "\n\nWould you like to add a **bedside table** next?";
+      nextSuggested = ["table", "lamp"];
+      nextPrompt = "\n\nWould you like to add a **table** next?";
     } else if (catLower.includes("table") || catLower.includes("bedside") || catLower.includes("nightstand")) {
       nextSuggested = ["lamp", "wardrobe"];
       nextPrompt = "\n\nWould you like to add a **lamp**?";
@@ -620,6 +625,21 @@ export default function ChatPage() {
     });
   };
 
+  // Sync latest composed design image to backend database for "My Designs"
+  const handleCompositeChange = async (dataUrl: string) => {
+    if (!room?.room_id) return;
+    try {
+      await api.post("/chat/save-composite-image", {
+        room_id: room.room_id,
+        user_id: getUserId(),
+        composite_image: dataUrl,
+        furniture_state: placedItems,
+      });
+    } catch (err) {
+      console.warn("Could not save composite design image to backend:", err);
+    }
+  };
+
   // Remove individual placed item permanently
   const handleRemoveItem = async (id: string) => {
     const itemToRemove = placedItems.find((it) => it.id === id);
@@ -697,7 +717,7 @@ export default function ChatPage() {
         text: "Cleared all added furniture from your room canvas. We have a clean slate to design again!",
         timestamp: new Date().toISOString(),
         step: "suggest_space",
-        suggestedCategories: ["bed", "bedside_table", "lamp"],
+        suggestedCategories: ["bed", "table", "lamp"],
       },
     ]);
   };
@@ -724,10 +744,10 @@ export default function ChatPage() {
       return;
     }
 
-    // Check if user mentioned a category (e.g. "bed", "bedside table", "side table", "lamp", "wardrobe")
+    // Check if user mentioned a category (e.g. "bed", "table", "side table", "lamp", "wardrobe")
     const lower = userText.toLowerCase();
     const matchedCategory = DATASET_CATEGORIES.find((c) => {
-      if (c.key === "bedside_table") {
+      if (c.key === "table" || c.key === "bedside_table") {
         return (
           lower.includes("bedside") ||
           lower.includes("nightstand") ||
@@ -768,7 +788,7 @@ export default function ChatPage() {
             text: replyText,
             timestamp: new Date().toISOString(),
             step: "custom",
-            suggestedCategories: ["bed", "bedside_table", "lamp"],
+            suggestedCategories: ["bed", "table", "lamp"],
           },
         ]);
       }
@@ -778,10 +798,10 @@ export default function ChatPage() {
         {
           id: `ai_err_${Date.now()}`,
           sender: "AI",
-          text: "I'm right here with you! You can choose any furniture piece like a Bed, Bedside Table, or Night Lamp to add it to your room.",
+          text: "I'm right here with you! You can choose any furniture piece like a Bed, Table, or Night Lamp to add it to your room.",
           timestamp: new Date().toISOString(),
           step: "suggest_space",
-          suggestedCategories: ["bed", "bedside_table", "lamp"],
+          suggestedCategories: ["bed", "table", "lamp"],
         },
       ]);
     } finally {
@@ -931,6 +951,8 @@ export default function ChatPage() {
               <RoomCanvas
                 roomImage={roomImageSrc}
                 placedItems={placedItems}
+                roomLength={room?.room_length || (setupLength ? parseFloat(setupLength) : 14)}
+                roomWidth={room?.room_width || (setupWidth ? parseFloat(setupWidth) : 12)}
                 onDropItem={(item, x, y) => handlePlaceFurnitureItem(item, x, y)}
                 onUpdateItemPosition={handleUpdateItemPosition}
                 onUpdateItemScale={handleUpdateItemScale}
@@ -941,6 +963,7 @@ export default function ChatPage() {
                 onZoomPreview={(url) => setZoomImage(url)}
                 selectedItemId={selectedItemId}
                 onSelectItem={setSelectedItemId}
+                onCompositeChange={handleCompositeChange}
               />
 
               {/* Space Suggestion Quick Bar below canvas */}
@@ -1039,9 +1062,10 @@ export default function ChatPage() {
                         {msg.suggestedCategories && msg.suggestedCategories.length > 0 && (
                           <div className={`mt-3 pt-2.5 border-t flex flex-wrap gap-1.5 ${isLight ? "border-stone-200" : "border-slate-700"}`}>
                             {msg.suggestedCategories.map((catKey) => {
-                              const meta = DATASET_CATEGORIES.find((c) => c.key === catKey) || {
-                                key: catKey,
-                                label: catKey.charAt(0).toUpperCase() + catKey.slice(1),
+                              const normKey = catKey === "bedside_table" ? "table" : catKey;
+                              const meta = DATASET_CATEGORIES.find((c) => c.key === normKey) || {
+                                key: normKey,
+                                label: normKey === "bedside_table" || normKey === "table" ? "Table" : normKey.charAt(0).toUpperCase() + normKey.slice(1).replace(/_/g, " "),
                                 icon: "🪑",
                               };
 

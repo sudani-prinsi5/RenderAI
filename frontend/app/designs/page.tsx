@@ -82,9 +82,19 @@ export default function DesignsPage() {
     }
   };
 
+  const getDesignImageUrl = (imagePath?: string | null, fallbackPath?: string | null) => {
+    const path = imagePath || fallbackPath;
+    if (!path) return "/furniture_dataset/bed/buget_10k/bed1.jpeg";
+    if (path.startsWith("data:") || path.startsWith("blob:") || path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    return API_BASE + (path.startsWith("/") ? path : `/${path}`);
+  };
+
   const downloadImage = (path: string, name: string) => {
+    const fullUrl = getDesignImageUrl(path);
     const link = document.createElement("a");
-    link.href = API_BASE + path;
+    link.href = fullUrl;
     link.download = name;
     link.target = "_blank";
     link.click();
@@ -178,10 +188,7 @@ export default function DesignsPage() {
                 >
                   <div className="aspect-video bg-black/10 relative overflow-hidden">
                     <img
-                      src={
-                        API_BASE +
-                        (design.generated_image || design.original_image)
-                      }
+                      src={getDesignImageUrl(design.generated_image, design.original_image)}
                       alt={`Room ${design.room_id}`}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />
@@ -265,7 +272,7 @@ export default function DesignsPage() {
                     </p>
                     <div className="rounded-xl overflow-hidden border border-inherit shadow-md aspect-video bg-black/5 flex items-center justify-center">
                       <img
-                        src={API_BASE + selected.original_image}
+                        src={getDesignImageUrl(selected.original_image)}
                         alt="Original"
                         className="w-full h-full object-cover"
                       />
@@ -275,11 +282,11 @@ export default function DesignsPage() {
                   {selected.generated_image && (
                     <div>
                       <p className={`text-xs font-bold uppercase mb-2 ${isLight ? "text-slate-500" : "text-slate-400"}`}>
-                        Generated AI Design
+                        Latest Final Room Design
                       </p>
                       <div className="rounded-xl overflow-hidden border-2 border-indigo-500 shadow-md aspect-video bg-black/5 flex items-center justify-center">
                         <img
-                          src={API_BASE + selected.generated_image}
+                          src={getDesignImageUrl(selected.generated_image)}
                           alt="Generated"
                           className="w-full h-full object-cover"
                         />
@@ -298,24 +305,32 @@ export default function DesignsPage() {
                       Placed Furniture ({selected.furniture_items.length} items)
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {selected.furniture_items.map((item) => (
-                        <div
-                          key={item.id}
-                          className={`border rounded-xl p-3.5 space-y-1 ${
-                            isLight ? "bg-slate-50 border-slate-200" : "bg-slate-950/70 border-slate-800"
-                          }`}
-                        >
-                          <p className={`font-bold text-sm ${isLight ? "text-slate-800" : "text-slate-200"}`}>
-                            {item.label} — <span className="font-normal text-xs">{item.size}</span>
-                          </p>
-                          <p className={`text-xs ${isLight ? "text-slate-500" : "text-slate-400"}`}>
-                            Color: <span className="capitalize">{item.color}</span> · Position: <span className="capitalize">{item.position}</span>
-                          </p>
-                          <p className={`text-xs font-mono ${isLight ? "text-slate-500" : "text-slate-400"}`}>
-                            Size: {item.width_ft}×{item.length_ft} ft
-                          </p>
-                        </div>
-                      ))}
+                      {selected.furniture_items.map((item: any, idx: number) => {
+                        const label = item.label || item.name || `Furniture Piece ${idx + 1}`;
+                        const length = item.dimensions?.length_ft ?? item.length_ft ?? 6.5;
+                        const width = item.dimensions?.width_ft ?? item.width_ft ?? 5.0;
+                        const price = item.price ? `₹${Number(item.price).toLocaleString("en-IN")}` : null;
+                        const material = item.material || item.description;
+
+                        return (
+                          <div
+                            key={item.id || idx}
+                            className={`border rounded-xl p-3.5 space-y-1 ${
+                              isLight ? "bg-slate-50 border-slate-200" : "bg-slate-950/70 border-slate-800"
+                            }`}
+                          >
+                            <p className={`font-bold text-sm ${isLight ? "text-slate-800" : "text-slate-200"}`}>
+                              {label} {item.size ? <span className="font-normal text-xs">({item.size})</span> : ""}
+                            </p>
+                            <p className={`text-xs ${isLight ? "text-slate-500" : "text-slate-400"}`}>
+                              {price ? `Price: ${price}` : ""} {material ? `· ${material}` : ""}
+                            </p>
+                            <p className={`text-xs font-mono ${isLight ? "text-slate-500" : "text-slate-400"}`}>
+                              Dimensions: {width}×{length} ft
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : (

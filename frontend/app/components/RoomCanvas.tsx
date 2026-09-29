@@ -10,10 +10,11 @@ import {
   FiCheck,
   FiGrid,
   FiLayers,
+  FiInfo,
   FiPlus,
   FiMinus,
 } from "react-icons/fi";
-import { DatasetFurnitureItem } from "../services/datasetCatalog";
+import { DatasetFurnitureItem, calculateRealisticFurnitureWidthPct } from "../services/datasetCatalog";
 
 export interface PlacedItem {
   id: string;
@@ -25,18 +26,22 @@ export interface PlacedItem {
   image_url: string;
   pos_x: number; // 0 - 100%
   pos_y: number; // 0 - 100%
-  scale: number; // 0.6 - 2.0
+  scale: number; // 0.2 - 1.8 (Minimum 20%)
   rotation?: number; // degrees
   dimensions?: {
     length_ft: number;
     width_ft: number;
     height_ft?: number;
   };
+  material?: string;
+  description?: string;
 }
 
 interface RoomCanvasProps {
   roomImage: string | null;
   placedItems: PlacedItem[];
+  roomLength?: number;
+  roomWidth?: number;
   onDropItem: (item: DatasetFurnitureItem, posX: number, posY: number) => void;
   onUpdateItemPosition: (id: string, posX: number, posY: number) => void;
   onUpdateItemScale: (id: string, scale: number) => void;
@@ -47,11 +52,14 @@ interface RoomCanvasProps {
   onZoomPreview?: (url: string) => void;
   selectedItemId?: string | null;
   onSelectItem?: (id: string | null) => void;
+  onCompositeChange?: (dataUrl: string) => void;
 }
 
 export default function RoomCanvas({
   roomImage,
   placedItems,
+  roomLength = 14,
+  roomWidth = 12,
   onDropItem,
   onUpdateItemPosition,
   onUpdateItemScale,
@@ -62,6 +70,7 @@ export default function RoomCanvas({
   onZoomPreview,
   selectedItemId: controlledSelectedItemId,
   onSelectItem,
+  onCompositeChange,
 }: RoomCanvasProps) {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -135,7 +144,6 @@ export default function RoomCanvas({
     }
   };
 
-
   const handleMouseMoveCanvas = (e: React.MouseEvent) => {
     if (!draggingPlacedId || !canvasContainerRef.current) return;
 
@@ -162,16 +170,152 @@ export default function RoomCanvas({
   }, []);
 
   const totalCost = placedItems.reduce((acc, it) => acc + (it.price || 0), 0);
-  const selectedItem = placedItems.find((it) => it.id === selectedItemId);
 
-  // Download snapshot
-  const handleDownloadSnapshot = () => {
+  // Active item for details section below room image
+  const selectedItem =
+    placedItems.find((it) => it.id === selectedItemId) ||
+    (placedItems.length > 0 ? placedItems[placedItems.length - 1] : null);
+
+  // Helper to load image as safe HTMLImageElement for canvas rendering
+  const loadImageElement = (src: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => {
+        const fallback = new Image();
+        fallback.onload = () => resolve(fallback);
+        fallback.onerror = (err) => reject(err);
+        fallback.src = src;
+      };
+      img.src = src;
+    });
+  };
+
+  // Helper to generate the final composite data URL with all latest placed furniture
+  const generateCompositeDataUrl = async (): Promise<string | null> => {
+    if (!roomImage) return null;
+    if (placedItems.length === 0) return roomImage;
+
+    try {
+      // 1. Load room background image
+      const bgImg = await loadImageElement(roomImage);
+
+      // 2. Measure canvas container dimensions
+      const container = canvasContainerRef.current;
+      const rect = container?.getBoundingClientRect();
+      const containerWidth = rect?.width || 1200;
+      const containerHeight = rect?.height || 750;
+
+      // High resolution canvas target: match at least 1600px or background native width
+      const targetWidth = Math.max(1600, bgImg.naturalWidth || 1600);
+      const targetHeight = Math.round(targetWidth * (containerHeight / containerWidth)) || bgImg.naturalHeight || 1000;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return roomImage;
+
+      // 3. Draw base background room image with object-cover calculation
+      const imgRatio = (bgImg.naturalWidth || targetWidth) / (bgImg.naturalHeight || targetHeight);
+      const canvasRatio = targetWidth / targetHeight;
+      let sWidth = bgImg.naturalWidth || targetWidth;
+      let sHeight = bgImg.naturalHeight || targetHeight;
+      let sx = 0;
+      let sy = 0;
+
+      if (imgRatio > canvasRatio) {
+        sHeight = bgImg.naturalHeight || targetHeight;
+        sWidth = sHeight * canvasRatio;
+        sx = ((bgImg.naturalWidth || targetWidth) - sWidth) / 2;
+        sy = 0;
+      } else {
+        sWidth = bgImg.naturalWidth || targetWidth;
+        sHeight = sWidth / canvasRatio;
+        sx = 0;
+        sy = ((bgImg.naturalHeight || targetHeight) - sHeight) / 2;
+      }
+
+      ctx.drawImage(bgImg, sx, sy, sWidth, sHeight, 0, 0, targetWidth, targetHeight);
+
+      // 4. Draw all placed furniture items in exact order, positions, scales, and rotations
+      for (const item of placedItems) {
+        try {
+          const itemImgUrl = item.image_url;
+          if (!itemImgUrl) continue;
+
+          const fImg = await loadImageElement(itemImgUrl);
+
+          const posX = (item.pos_x / 100) * targetWidth;
+          const posY = (item.pos_y / 100) * targetHeight;
+
+          const baseWidthPct = calculateRealisticFurnitureWidthPct(item, roomWidth || 14);
+          const currentScale = item.scale ?? 1.0;
+          const computedWidthPct = Math.max(3, Math.min(85, baseWidthPct * currentScale));
+          const itemWidth = (computedWidthPct / 100) * targetWidth;
+          const itemHeight = itemWidth * ((fImg.naturalHeight || 1) / (fImg.naturalWidth || 1));
+          const rotation = item.rotation || 0;
+
+          ctx.save();
+
+          // Subtle natural drop shadow matching UI styling
+          ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+          ctx.shadowBlur = Math.round(18 * (targetWidth / 1200));
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = Math.round(10 * (targetWidth / 1200));
+
+          ctx.translate(posX, posY);
+          ctx.rotate((rotation * Math.PI) / 180);
+          ctx.drawImage(fImg, -itemWidth / 2, -itemHeight / 2, itemWidth, itemHeight);
+
+          ctx.restore();
+        } catch (itemErr) {
+          console.warn("Could not draw furniture item for composite:", item.label, itemErr);
+        }
+      }
+
+      return canvas.toDataURL("image/png");
+    } catch (err) {
+      console.error("Error creating composite room design image:", err);
+      return roomImage;
+    }
+  };
+
+  // Download final composed room design image with all placed furniture
+  const handleDownloadSnapshot = async () => {
     if (!roomImage) return;
+    const dataUrl = await generateCompositeDataUrl();
+    if (!dataUrl) return;
     const link = document.createElement("a");
-    link.href = roomImage;
-    link.download = "interior_design_workspace.png";
+    link.href = dataUrl;
+    link.download = `room_design_${Date.now()}.png`;
     link.click();
   };
+
+  // Open latest room design image in Fullscreen Zoom Preview
+  const handleZoomClick = async () => {
+    if (!roomImage || !onZoomPreview) return;
+    const dataUrl = await generateCompositeDataUrl();
+    onZoomPreview(dataUrl || roomImage);
+  };
+
+  // Automatically generate and report latest composite room design image to parent
+  useEffect(() => {
+    if (!roomImage || !onCompositeChange) return;
+    const timer = setTimeout(async () => {
+      try {
+        const dataUrl = await generateCompositeDataUrl();
+        if (dataUrl) {
+          onCompositeChange(dataUrl);
+        }
+      } catch (err) {
+        console.warn("Could not generate composite for parent:", err);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [placedItems, roomImage]);
 
   return (
     <div
@@ -197,7 +341,7 @@ export default function RoomCanvas({
             </h2>
             <p className={`text-[11px] ${isLight ? "text-stone-500" : "text-stone-400"}`}>
               {placedItems.length === 0
-                ? "Original room photo · Drag & drop furniture from the designer"
+                ? `Original room space (${roomLength}×${roomWidth} ft) · Drag & drop furniture from the designer`
                 : `${placedItems.length} custom piece${placedItems.length > 1 ? "s" : ""} placed · Total: ₹${totalCost.toLocaleString("en-IN")}`}
             </p>
           </div>
@@ -238,7 +382,7 @@ export default function RoomCanvas({
               {onZoomPreview && (
                 <button
                   suppressHydrationWarning
-                  onClick={() => onZoomPreview(roomImage)}
+                  onClick={handleZoomClick}
                   title="Fullscreen zoom"
                   className={`p-1.5 rounded-lg border text-xs font-medium transition flex items-center justify-center cursor-pointer ${
                     isLight
@@ -254,7 +398,7 @@ export default function RoomCanvas({
         </div>
       </div>
 
-      {/* Main Visual Canvas Area */}
+      {/* Main Visual Canvas Area (Clean Room Photo with Placed Furniture - NO Text/Cards/Labels over Photo) */}
       <div
         ref={canvasContainerRef}
         onDragOver={handleDragOver}
@@ -278,7 +422,6 @@ export default function RoomCanvas({
             className="w-full h-full object-cover pointer-events-none select-none transition-opacity duration-300"
             style={{ userSelect: "none" }}
           />
-
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-stone-400">
             <FiGrid className="text-4xl mb-2 opacity-40" />
@@ -299,12 +442,16 @@ export default function RoomCanvas({
           </div>
         )}
 
-        {/* Placed Furniture Items Layers */}
+        {/* Placed Furniture Items Layers - Clean Rendering Without Cluttering Overlays */}
         {placedItems.map((item) => {
           const isSelected = selectedItemId === item.id;
           const isBeingDragged = draggingPlacedId === item.id;
-          const scale = item.scale || 1.0;
           const rotation = item.rotation || 0;
+          const currentScale = item.scale ?? 1.0;
+
+          // Automatic Realistic Proportion Calculation based on room dimensions
+          const baseWidthPct = calculateRealisticFurnitureWidthPct(item, roomWidth || 14);
+          const computedWidthPct = Math.max(3, Math.min(85, baseWidthPct * currentScale));
 
           return (
             <div
@@ -312,7 +459,8 @@ export default function RoomCanvas({
               style={{
                 left: `${item.pos_x}%`,
                 top: `${item.pos_y}%`,
-                transform: `translate(-50%, -50%) scale(${scale}) rotate(${rotation}deg)`,
+                width: `${computedWidthPct}%`,
+                transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
                 userSelect: "none",
               }}
               onMouseDown={(e) => handleMouseDownItem(e, item)}
@@ -324,11 +472,11 @@ export default function RoomCanvas({
                 isBeingDragged ? "opacity-90 z-30" : ""
               }`}
             >
-              {/* Furniture Object Container */}
+              {/* Furniture Object Container - Clean, No Text/Cards/Labels directly on room photo */}
               <div
-                className={`relative transition-all duration-200 rounded-xl ${
+                className={`relative transition-all duration-200 rounded-lg ${
                   isSelected
-                    ? "ring-2 ring-indigo-500 ring-offset-2 shadow-2xl scale-105"
+                    ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-transparent shadow-2xl"
                     : "hover:ring-1 hover:ring-indigo-400/50"
                 }`}
               >
@@ -342,18 +490,11 @@ export default function RoomCanvas({
                     (e.target as HTMLImageElement).src =
                       "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400";
                   }}
-                  className="w-28 sm:w-36 md:w-44 h-auto object-contain drop-shadow-2xl pointer-events-none select-none"
+                  className="w-full h-auto object-contain drop-shadow-2xl pointer-events-none select-none block"
                   style={{ userSelect: "none" }}
                 />
 
-
-
-                {/* Price and Category Tag */}
-                <div className="absolute bottom-1.5 left-1.5 bg-slate-950/85 backdrop-blur-sm text-white px-2 py-0.5 rounded-md text-[10px] font-bold font-mono shadow">
-                  ₹{item.price.toLocaleString("en-IN")}
-                </div>
-
-                {/* Remove button on hover / selected */}
+                {/* Subtle Quick Delete Icon on Hover / Selection */}
                 <button
                   suppressHydrationWarning
                   onClick={(e) => {
@@ -361,74 +502,205 @@ export default function RoomCanvas({
                     onRemoveItem(item.id);
                   }}
                   title="Remove this item"
-                  className={`absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-500 text-white p-1 rounded-md shadow-md transition cursor-pointer ${
+                  className={`absolute top-1 right-1 bg-rose-600/90 hover:bg-rose-600 text-white p-1 rounded-md shadow-md transition cursor-pointer ${
                     isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                   }`}
                 >
-                  <FiTrash2 className="text-[11px]" />
+                  <FiTrash2 className="text-[10px]" />
                 </button>
-              </div>
-
-              {/* Position Marker Pin */}
-              <div className="flex items-center justify-center mt-1">
-                <span className="bg-indigo-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-md truncate max-w-36">
-                  {item.label}
-                </span>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Selected Item Control Strip (Adjust scale / reposition / delete) */}
-      {selectedItem && (
+      {/* ========================================================================= */}
+      {/* 3. FURNITURE DETAILS SECTION (DISPLAYED BELOW THE ROOM IMAGE)             */}
+      {/* ========================================================================= */}
+      {selectedItem ? (
         <div
-          className={`px-5 py-2.5 border-t flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-bottom-2 duration-150 ${
-            isLight ? "border-stone-200 bg-stone-50 text-stone-800" : "border-slate-800 bg-slate-950/80 text-stone-200"
+          className={`px-5 py-4 border-t flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200 ${
+            isLight ? "border-stone-200 bg-stone-50/90 text-stone-800" : "border-slate-800 bg-slate-950/90 text-stone-100"
           }`}
         >
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-indigo-600 dark:text-indigo-400">Selected Piece:</span>
-            <span className="font-semibold truncate max-w-xs">{selectedItem.label}</span>
-            <span className="font-mono text-emerald-600 font-bold">
-              ₹{selectedItem.price.toLocaleString("en-IN")}
-            </span>
-          </div>
+          {/* Header row: Placed Piece Switcher (if multiple) & Title */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-stone-200/60 dark:border-slate-800/60">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                <FiInfo className="text-xs" /> Placed Furniture Details
+              </span>
 
-          <div className="flex items-center gap-4">
-            {/* Scale Adjuster */}
-            <div className="flex items-center gap-1.5">
-              <span className={`text-[11px] font-medium ${isLight ? "text-stone-500" : "text-stone-400"}`}>
-                Size:
-              </span>
-              <button
-                suppressHydrationWarning
-                onClick={() => onUpdateItemScale(selectedItem.id, Math.max(0.6, (selectedItem.scale || 1.0) - 0.1))}
-                className={`p-1 rounded border transition ${
-                  isLight ? "bg-white hover:bg-stone-100 border-stone-300" : "bg-slate-800 hover:bg-slate-700 border-slate-700"
-                }`}
-                title="Decrease size"
-              >
-                <FiMinus className="text-[10px]" />
-              </button>
-              <span className="font-mono text-[11px] font-semibold w-8 text-center">
-                {Math.round((selectedItem.scale || 1.0) * 100)}%
-              </span>
-              <button
-                suppressHydrationWarning
-                onClick={() => onUpdateItemScale(selectedItem.id, Math.min(1.8, (selectedItem.scale || 1.0) + 0.1))}
-                className={`p-1 rounded border transition ${
-                  isLight ? "bg-white hover:bg-stone-100 border-stone-300" : "bg-slate-800 hover:bg-slate-700 border-slate-700"
-                }`}
-                title="Increase size"
-              >
-                <FiPlus className="text-[10px]" />
-              </button>
+              {placedItems.length > 1 && (
+                <div className="flex items-center gap-1 ml-2 flex-wrap">
+                  {placedItems.map((it) => (
+                    <button
+                      key={it.id}
+                      onClick={() => setSelectedItemId(it.id)}
+                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg border transition cursor-pointer ${
+                        (selectedItemId === it.id || (!selectedItemId && selectedItem.id === it.id))
+                          ? isLight
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                            : "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                          : isLight
+                          ? "bg-white text-stone-700 border-stone-200 hover:bg-stone-100"
+                          : "bg-slate-900 text-stone-300 border-slate-700 hover:bg-slate-800"
+                      }`}
+                    >
+                      {it.label.split(" ").slice(0, 2).join(" ")}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Rotation Control */}
-            <div className="flex items-center gap-1.5">
-              <span className={`text-[11px] font-medium ${isLight ? "text-stone-500" : "text-stone-400"}`}>
+            <button
+              suppressHydrationWarning
+              onClick={() => onRemoveItem(selectedItem.id)}
+              className="text-rose-600 hover:text-rose-700 font-semibold text-[11px] flex items-center gap-1 cursor-pointer ml-auto"
+            >
+              <FiTrash2 className="text-xs" /> Remove Piece
+            </button>
+          </div>
+
+          {/* Details Grid: Name, Price, Size/Dimensions, Material, Position */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            {/* 1. Furniture Name & Category */}
+            <div
+              className={`p-2.5 rounded-xl border ${
+                isLight ? "bg-white border-stone-200/80" : "bg-slate-900/80 border-slate-800"
+              }`}
+            >
+              <span className={`text-[10px] font-bold uppercase tracking-wider block ${isLight ? "text-stone-400" : "text-stone-500"}`}>
+                Furniture Name
+              </span>
+              <h4 className="font-bold text-xs line-clamp-1 mt-0.5 text-stone-900 dark:text-stone-100">
+                {selectedItem.label}
+              </h4>
+              <span className={`text-[10px] capitalize ${isLight ? "text-stone-500" : "text-stone-400"}`}>
+                Category: {selectedItem.category}
+              </span>
+            </div>
+
+            {/* 2. Price */}
+            <div
+              className={`p-2.5 rounded-xl border ${
+                isLight ? "bg-white border-stone-200/80" : "bg-slate-900/80 border-slate-800"
+              }`}
+            >
+              <span className={`text-[10px] font-bold uppercase tracking-wider block ${isLight ? "text-stone-400" : "text-stone-500"}`}>
+                Price
+              </span>
+              <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-sm block mt-0.5">
+                ₹{selectedItem.price.toLocaleString("en-IN")}
+              </span>
+              <span className={`text-[10px] ${isLight ? "text-stone-500" : "text-stone-400"}`}>
+                Catalog Verified Price
+              </span>
+            </div>
+
+            {/* 3. Furniture Size / Dimensions */}
+            <div
+              className={`p-2.5 rounded-xl border ${
+                isLight ? "bg-white border-stone-200/80" : "bg-slate-900/80 border-slate-800"
+              }`}
+            >
+              <span className={`text-[10px] font-bold uppercase tracking-wider block ${isLight ? "text-stone-400" : "text-stone-500"}`}>
+                Dimensions (L×W×H)
+              </span>
+              <span className="font-bold text-xs block mt-0.5 text-stone-800 dark:text-stone-200">
+                {selectedItem.dimensions?.length_ft ?? 6.5} ft (L) × {selectedItem.dimensions?.width_ft ?? 5.0} ft (W)
+                {selectedItem.dimensions?.height_ft ? ` × ${selectedItem.dimensions.height_ft} ft (H)` : ""}
+              </span>
+              <span className={`text-[10px] text-indigo-600 dark:text-indigo-400 font-medium`}>
+                Proportioned for {roomLength}×{roomWidth} ft Room
+              </span>
+            </div>
+
+            {/* 4. Placement & Material */}
+            <div
+              className={`p-2.5 rounded-xl border ${
+                isLight ? "bg-white border-stone-200/80" : "bg-slate-900/80 border-slate-800"
+              }`}
+            >
+              <span className={`text-[10px] font-bold uppercase tracking-wider block ${isLight ? "text-stone-400" : "text-stone-500"}`}>
+                Material & Description
+              </span>
+              <span className="font-medium text-[11px] block mt-0.5 line-clamp-1 text-stone-700 dark:text-stone-300">
+                {selectedItem.material || selectedItem.description || "Solid wood / premium craftsmanship"}
+              </span>
+              <span className={`text-[10px] ${isLight ? "text-stone-400" : "text-stone-500"}`}>
+                Pos: X {selectedItem.pos_x}%, Y {selectedItem.pos_y}%
+              </span>
+            </div>
+          </div>
+
+          {/* Controls Bar: Resize (Min 20% to 180%) & Rotation Slider */}
+          <div
+            className={`p-3 rounded-xl border flex flex-wrap items-center justify-between gap-4 ${
+              isLight ? "bg-white border-stone-200/80" : "bg-slate-900/80 border-slate-800"
+            }`}
+          >
+            {/* Size Control */}
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-semibold ${isLight ? "text-stone-600" : "text-stone-300"}`}>
+                Size:
+              </span>
+
+              <button
+                suppressHydrationWarning
+                onClick={() =>
+                  onUpdateItemScale(
+                    selectedItem.id,
+                    Math.max(0.2, Number(((selectedItem.scale || 1.0) - 0.05).toFixed(2)))
+                  )
+                }
+                className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                  isLight ? "bg-stone-100 hover:bg-stone-200 border-stone-300 text-stone-800" : "bg-slate-800 hover:bg-slate-700 border-slate-700 text-stone-200"
+                }`}
+                title="Decrease size (down to 20%)"
+              >
+                <FiMinus className="text-xs" />
+              </button>
+
+              <input
+                suppressHydrationWarning
+                type="range"
+                min="0.2"
+                max="1.8"
+                step="0.05"
+                value={selectedItem.scale ?? 1.0}
+                onChange={(e) => onUpdateItemScale(selectedItem.id, parseFloat(e.target.value))}
+                className={`w-24 sm:w-32 h-1.5 rounded-lg appearance-none cursor-pointer accent-indigo-600 ${
+                  isLight ? "bg-stone-200" : "bg-slate-700"
+                }`}
+                title={`Size: ${Math.round((selectedItem.scale || 1.0) * 100)}%`}
+                aria-label="Size Scale"
+              />
+
+              <button
+                suppressHydrationWarning
+                onClick={() =>
+                  onUpdateItemScale(
+                    selectedItem.id,
+                    Math.min(1.8, Number(((selectedItem.scale || 1.0) + 0.05).toFixed(2)))
+                  )
+                }
+                className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                  isLight ? "bg-stone-100 hover:bg-stone-200 border-stone-300 text-stone-800" : "bg-slate-800 hover:bg-slate-700 border-slate-700 text-stone-200"
+                }`}
+                title="Increase size (up to 180%)"
+              >
+                <FiPlus className="text-xs" />
+              </button>
+
+              <span className="font-mono text-xs font-bold w-12 text-center text-indigo-600 dark:text-indigo-400">
+                {Math.round((selectedItem.scale || 1.0) * 100)}%
+              </span>
+            </div>
+
+            {/* Rotation Slider Control */}
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-semibold ${isLight ? "text-stone-600" : "text-stone-300"}`}>
                 Rotation:
               </span>
               <input
@@ -439,26 +711,30 @@ export default function RoomCanvas({
                 step="1"
                 value={selectedItem.rotation ?? 0}
                 onChange={(e) => onUpdateItemRotation?.(selectedItem.id, Number(e.target.value))}
-                className={`w-20 sm:w-24 h-1.5 rounded-lg appearance-none cursor-pointer accent-indigo-600 ${
+                className={`w-24 sm:w-28 h-1.5 rounded-lg appearance-none cursor-pointer accent-indigo-600 ${
                   isLight ? "bg-stone-200" : "bg-slate-700"
                 }`}
                 title={`Rotation: ${selectedItem.rotation ?? 0}°`}
                 aria-label="Rotation"
               />
-              <span className="font-mono text-[11px] font-semibold w-8 text-center">
+              <span className="font-mono text-xs font-bold w-10 text-center text-stone-800 dark:text-stone-200">
                 {selectedItem.rotation ?? 0}°
               </span>
             </div>
-
-            {/* Remove */}
-            <button
-              suppressHydrationWarning
-              onClick={() => onRemoveItem(selectedItem.id)}
-              className="text-rose-600 hover:text-rose-700 font-semibold text-[11px] flex items-center gap-1 cursor-pointer"
-            >
-              <FiTrash2 className="text-xs" /> Remove Piece
-            </button>
           </div>
+        </div>
+      ) : (
+        /* Empty State Hint below canvas when no furniture placed */
+        <div
+          className={`px-5 py-3 border-t text-xs flex items-center justify-between ${
+            isLight ? "border-stone-200/80 bg-stone-50/50 text-stone-500" : "border-slate-800/80 bg-slate-950/40 text-stone-400"
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <FiInfo className="text-xs text-indigo-500" />
+            Drag and drop furniture items from the AI designer or dataset catalog into the room canvas above.
+          </span>
+          <span className="text-[11px] font-mono">Room: {roomLength}×{roomWidth} ft</span>
         </div>
       )}
     </div>
