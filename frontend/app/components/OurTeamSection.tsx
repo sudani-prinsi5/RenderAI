@@ -25,13 +25,16 @@ const teamMembers: TeamMember[] = [
     phone: "8160366674",
     email: "sudaniprinsi5@gmail.com",
     linkedin: "https://www.linkedin.com/in/prinsi-sudani-b54179311",
-    bio: "Focuses on building modern, responsive user interfaces and integrating YOLO-based computer vision for automated room object detection.",
+    bio: "Focuses on building modern, responsive user interfaces and integrating AI-powered features, including user verification, drag-and-drop furniture placement, and YOLO-based computer vision for automated room object detection.",
     responsibilities: [
       "Frontend development",
       "UI/UX implementation",
+      "User authentication & verification code integration",
+      "Drag-and-drop furniture interaction",
       "Computer Vision",
       "YOLO-based object detection",
       "AI room/furniture visualization integration",
+      "Furniture placement and room design workflow"
     ],
   },
   {
@@ -85,19 +88,17 @@ export default function OurTeamSection() {
   return (
     <section
       id="our-team"
-      className={`scroll-mt-20 border-t py-20 px-6 z-10 transition-colors duration-200 ${
-        isLight ? "bg-slate-50/70 border-slate-200" : "bg-slate-950 border-slate-800/60"
-      }`}
+      className={`scroll-mt-20 border-t py-20 px-6 z-10 transition-colors duration-200 ${isLight ? "bg-slate-50/70 border-slate-200" : "bg-slate-950 border-slate-800/60"
+        }`}
     >
       <div className="max-w-6xl mx-auto space-y-14">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto space-y-3">
           <h2
-            className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
-              isLight
-                ? "text-slate-900"
-                : "bg-gradient-to-r from-indigo-200 via-purple-200 to-slate-100 bg-clip-text text-transparent"
-            }`}
+            className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${isLight
+              ? "text-slate-900"
+              : "bg-gradient-to-r from-indigo-200 via-purple-200 to-slate-100 bg-clip-text text-transparent"
+              }`}
           >
             Our Team
           </h2>
@@ -116,11 +117,10 @@ export default function OurTeamSection() {
             return (
               <div
                 key={member.id}
-                className={`rounded-2xl border transition-all duration-300 flex flex-col justify-between overflow-hidden ${
-                  isLight
-                    ? "bg-white border-slate-200/90 shadow-sm hover:border-indigo-300 hover:shadow-md"
-                    : "bg-slate-900/60 border-slate-800/80 hover:border-indigo-500/40 shadow-lg"
-                }`}
+                className={`rounded-2xl border transition-all duration-300 flex flex-col justify-between overflow-hidden ${isLight
+                  ? "bg-white border-slate-200/90 shadow-sm hover:border-indigo-300 hover:shadow-md"
+                  : "bg-slate-900/60 border-slate-800/80 hover:border-indigo-500/40 shadow-lg"
+                  }`}
               >
                 {/* Profile Photo */}
                 <div className="relative w-full aspect-[4/5] overflow-hidden bg-slate-100 dark:bg-slate-950">
@@ -166,15 +166,14 @@ export default function OurTeamSection() {
                   <div className="pt-2">
                     <button
                       onClick={() => toggleExpand(member.id)}
-                      className={`w-full py-2.5 px-4 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                        isExpanded
-                          ? isLight
-                            ? "bg-slate-100 border-slate-300 text-slate-900"
-                            : "bg-slate-800 border-slate-700 text-white"
-                          : isLight
+                      className={`w-full py-2.5 px-4 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2 transition-all cursor-pointer ${isExpanded
+                        ? isLight
+                          ? "bg-slate-100 border-slate-300 text-slate-900"
+                          : "bg-slate-800 border-slate-700 text-white"
+                        : isLight
                           ? "bg-indigo-50/80 hover:bg-indigo-100 border-indigo-200 text-indigo-700"
                           : "bg-indigo-950/40 hover:bg-indigo-900/60 border-indigo-800/60 text-indigo-300"
-                      }`}
+                        }`}
                     >
                       <span>{isExpanded ? "Show Less" : "Know More"}</span>
                       <span className="text-xs">{isExpanded ? "▲" : "▼"}</span>
@@ -184,16 +183,14 @@ export default function OurTeamSection() {
                   {/* Expandable Details Area */}
                   {isExpanded && (
                     <div
-                      className={`pt-5 mt-4 border-t space-y-4 transition-all duration-300 ${
-                        isLight ? "border-slate-100" : "border-slate-800"
-                      }`}
+                      className={`pt-5 mt-4 border-t space-y-4 transition-all duration-300 ${isLight ? "border-slate-100" : "border-slate-800"
+                        }`}
                     >
                       {/* Responsibilities */}
                       <div className="space-y-2">
                         <p
-                          className={`text-xs font-bold uppercase tracking-wider ${
-                            isLight ? "text-slate-700" : "text-slate-300"
-                          }`}
+                          className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-slate-700" : "text-slate-300"
+                            }`}
                         >
                           Key Responsibilities:
                         </p>
@@ -201,9 +198,8 @@ export default function OurTeamSection() {
                           {member.responsibilities.map((resp, idx) => (
                             <li
                               key={idx}
-                              className={`flex items-start gap-2 ${
-                                isLight ? "text-slate-600" : "text-slate-400"
-                              }`}
+                              className={`flex items-start gap-2 ${isLight ? "text-slate-600" : "text-slate-400"
+                                }`}
                             >
                               <span className="text-indigo-500 font-bold mt-0.5">•</span>
                               <span>{resp}</span>
@@ -215,14 +211,12 @@ export default function OurTeamSection() {
                       {/* Contact Links (Only rendered if actual details exist) */}
                       {(member.phone || member.email || validLinkedin) && (
                         <div
-                          className={`pt-3 border-t space-y-2 ${
-                            isLight ? "border-slate-100" : "border-slate-800"
-                          }`}
+                          className={`pt-3 border-t space-y-2 ${isLight ? "border-slate-100" : "border-slate-800"
+                            }`}
                         >
                           <p
-                            className={`text-[11px] font-bold uppercase tracking-wider ${
-                              isLight ? "text-slate-500" : "text-slate-400"
-                            }`}
+                            className={`text-[11px] font-bold uppercase tracking-wider ${isLight ? "text-slate-500" : "text-slate-400"
+                              }`}
                           >
                             Contact Details:
                           </p>
@@ -231,11 +225,10 @@ export default function OurTeamSection() {
                             {member.email && (
                               <a
                                 href={`mailto:${member.email}`}
-                                className={`inline-flex items-center gap-2 text-xs font-medium transition ${
-                                  isLight
-                                    ? "text-indigo-600 hover:text-indigo-800"
-                                    : "text-indigo-400 hover:text-indigo-300"
-                                }`}
+                                className={`inline-flex items-center gap-2 text-xs font-medium transition ${isLight
+                                  ? "text-indigo-600 hover:text-indigo-800"
+                                  : "text-indigo-400 hover:text-indigo-300"
+                                  }`}
                               >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path
@@ -252,11 +245,10 @@ export default function OurTeamSection() {
                             {member.phone && (
                               <a
                                 href={`tel:${member.phone}`}
-                                className={`inline-flex items-center gap-2 text-xs font-medium transition ${
-                                  isLight
-                                    ? "text-indigo-600 hover:text-indigo-800"
-                                    : "text-indigo-400 hover:text-indigo-300"
-                                }`}
+                                className={`inline-flex items-center gap-2 text-xs font-medium transition ${isLight
+                                  ? "text-indigo-600 hover:text-indigo-800"
+                                  : "text-indigo-400 hover:text-indigo-300"
+                                  }`}
                               >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path
