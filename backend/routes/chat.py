@@ -128,8 +128,15 @@ def _serialize_room(room):
     if not detected_objects_list and room.original_image_path and not room.is_empty_room:
         try:
             detected_objects_list = detect_room_objects(room.original_image_path)
-        except Exception:
-            pass
+            if detected_objects_list:
+                if isinstance(details, dict):
+                    details["detected_objects"] = detected_objects_list
+                    room.detection_details = json.dumps(details)
+                else:
+                    room.detection_details = json.dumps({"detected_objects": detected_objects_list})
+                db.session.commit()
+        except Exception as e:
+            print(f"Auto-detection error in _serialize_room: {e}")
 
     return {
         "room_id": room.id,
@@ -166,8 +173,10 @@ def _get_room(room_id=None, user_id=None):
                 return user_room
         return db.session.get(RoomUpload, room_id)
     if user_id:
-        return RoomUpload.query.filter_by(user_id=user_id).order_by(RoomUpload.id.desc()).first()
-    return None
+        u_room = RoomUpload.query.filter_by(user_id=user_id).order_by(RoomUpload.id.desc()).first()
+        if u_room:
+            return u_room
+    return RoomUpload.query.order_by(RoomUpload.id.desc()).first()
 
 
 @chat.route("/latest-room", methods=["GET"])
@@ -1014,6 +1023,14 @@ def remove_room_object_endpoint():
         room_id = data.get("room_id")
         user_id = data.get("user_id")
         target_object = data.get("target_object") or {}
+
+        valid_keys = (
+            "id", "bbox", "bbox_pct", "polygon", "name", "click_pct",
+            "mask_base64", "manual_mask", "mask_image", "mask", "mask_data",
+            "manual_polygon", "points", "selection_mode"
+        )
+        if not target_object or not isinstance(target_object, dict) or not any(target_object.get(k) for k in valid_keys):
+            return jsonify({"success": False, "message": "Please select an object or brush an area to remove."}), 400
 
         room = _get_room(room_id, user_id)
         if room is None:

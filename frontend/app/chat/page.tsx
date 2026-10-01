@@ -209,8 +209,9 @@ export default function ChatPage() {
             const hasRoom = Boolean(saved.room || saved.roomImageSrc);
             const hasItems = Array.isArray(saved.placedItems) && saved.placedItems.length > 0;
             const hasMessages = Array.isArray(saved.messages) && saved.messages.length > 0;
+            const hasDetected = Array.isArray(saved.detectedObjects) && saved.detectedObjects.length > 0;
 
-            if (hasRoom || hasItems || hasMessages) {
+            if (hasRoom || hasItems || hasMessages || hasDetected) {
               if (saved.room) setRoom(saved.room);
               if (saved.roomImageSrc) setRoomImageSrc(saved.roomImageSrc);
               if (Array.isArray(saved.placedItems)) {
@@ -218,6 +219,9 @@ export default function ChatPage() {
               }
               if (Array.isArray(saved.messages) && saved.messages.length > 0) {
                 setMessages(saved.messages);
+              }
+              if (Array.isArray(saved.detectedObjects)) {
+                setDetectedObjects(saved.detectedObjects);
               }
               if (saved.selectedItemId !== undefined) {
                 setSelectedItemId(saved.selectedItemId);
@@ -266,6 +270,7 @@ export default function ChatPage() {
         roomImageSrc,
         placedItems,
         messages,
+        detectedObjects,
         selectedItemId,
         currentPendingCategory,
         currentBudget,
@@ -286,6 +291,7 @@ export default function ChatPage() {
     roomImageSrc,
     placedItems,
     messages,
+    detectedObjects,
     selectedItemId,
     currentPendingCategory,
     currentBudget,
@@ -306,6 +312,7 @@ export default function ChatPage() {
           roomImageSrc,
           placedItems,
           messages,
+          detectedObjects,
           selectedItemId,
           currentPendingCategory,
           currentBudget,
@@ -328,6 +335,7 @@ export default function ChatPage() {
     roomImageSrc,
     placedItems,
     messages,
+    detectedObjects,
     selectedItemId,
     currentPendingCategory,
     currentBudget,

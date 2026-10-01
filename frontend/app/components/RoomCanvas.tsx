@@ -13,6 +13,8 @@ import {
   FiInfo,
   FiPlus,
   FiMinus,
+  FiEdit3,
+  FiSquare,
 } from "react-icons/fi";
 import { DatasetFurnitureItem, calculateRealisticFurnitureWidthPct } from "../services/datasetCatalog";
 
@@ -91,6 +93,219 @@ export default function RoomCanvas({
   };
 
   const [selectedDetectedId, setSelectedDetectedId] = useState<string | null>(null);
+  const [selectionWarning, setSelectionWarning] = useState<string | null>(null);
+
+  // Manual Selection & Brush Tools State
+  const [removalMode, setRemovalMode] = useState<"detect" | "manual">("detect");
+  const [brushTool, setBrushTool] = useState<"brush" | "box">("brush");
+  const [brushSize, setBrushSize] = useState<number>(32);
+  const [isDrawing, setIsDrawing] = useState<boolean>(false);
+  const [hasManualSelection, setHasManualSelection] = useState<boolean>(false);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+  const [boxStart, setBoxStart] = useState<{ x: number; y: number } | null>(null);
+  const [boxCurrent, setBoxCurrent] = useState<{ x: number; y: number } | null>(null);
+
+  const maskCanvasRef = useRef<HTMLCanvasElement>(null);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (selectedDetectedId && !detectedObjects.some((o) => o.id === selectedDetectedId)) {
+      setSelectedDetectedId(null);
+    }
+  }, [detectedObjects, selectedDetectedId]);
+
+  // Clear manual mask
+  const clearManualMask = () => {
+    if (maskCanvasRef.current) {
+      const ctx = maskCanvasRef.current.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, maskCanvasRef.current.width, maskCanvasRef.current.height);
+      }
+    }
+    setHasManualSelection(false);
+    setBoxStart(null);
+    setBoxCurrent(null);
+    lastPointRef.current = null;
+  };
+
+  // Auto-clear manual mask when room image changes or after removal completes
+  useEffect(() => {
+    clearManualMask();
+  }, [roomImage]);
+
+  // Sync mask canvas resolution to container size
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      if (canvasContainerRef.current && maskCanvasRef.current) {
+        const rect = canvasContainerRef.current.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          const prevCanvas = document.createElement("canvas");
+          prevCanvas.width = maskCanvasRef.current.width;
+          prevCanvas.height = maskCanvasRef.current.height;
+          const pctx = prevCanvas.getContext("2d");
+          if (pctx && hasManualSelection && prevCanvas.width > 0) {
+            pctx.drawImage(maskCanvasRef.current, 0, 0);
+          }
+
+          maskCanvasRef.current.width = Math.round(rect.width);
+          maskCanvasRef.current.height = Math.round(rect.height);
+
+          const ctx = maskCanvasRef.current.getContext("2d");
+          if (ctx && hasManualSelection && prevCanvas.width > 0) {
+            ctx.drawImage(prevCanvas, 0, 0, maskCanvasRef.current.width, maskCanvasRef.current.height);
+          }
+        }
+      }
+    };
+    updateCanvasSize();
+    window.addEventListener("resize", updateCanvasSize);
+    return () => window.removeEventListener("resize", updateCanvasSize);
+  }, [hasManualSelection]);
+
+  const getCanvasCoords = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!canvasContainerRef.current || !maskCanvasRef.current) return null;
+    const rect = canvasContainerRef.current.getBoundingClientRect();
+    let clientX = 0;
+    let clientY = 0;
+
+    if ("touches" in e) {
+      if (e.touches.length === 0) return null;
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const scaleX = maskCanvasRef.current.width / rect.width;
+    const scaleY = maskCanvasRef.current.height / rect.height;
+
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+    const screenX = clientX - rect.left;
+    const screenY = clientY - rect.top;
+
+    return { x, y, screenX, screenY };
+  };
+
+  const handleStartDraw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (removalMode !== "manual") return;
+    const coords = getCanvasCoords(e);
+    if (!coords || !maskCanvasRef.current) return;
+
+    setIsDrawing(true);
+    setSelectionWarning(null);
+
+    if (brushTool === "brush") {
+      const ctx = maskCanvasRef.current.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "rgba(244, 63, 94, 0.75)";
+        ctx.beginPath();
+        ctx.arc(coords.x, coords.y, brushSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+        lastPointRef.current = { x: coords.x, y: coords.y };
+        setHasManualSelection(true);
+      }
+    } else if (brushTool === "box") {
+      setBoxStart({ x: coords.x, y: coords.y });
+      setBoxCurrent({ x: coords.x, y: coords.y });
+    }
+  };
+
+  const handleMoveDraw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (removalMode !== "manual") return;
+    const coords = getCanvasCoords(e);
+    if (!coords) return;
+
+    setCursorPos({ x: coords.screenX, y: coords.screenY });
+
+    if (!isDrawing || !maskCanvasRef.current) return;
+
+    if (brushTool === "brush") {
+      const ctx = maskCanvasRef.current.getContext("2d");
+      if (ctx && lastPointRef.current) {
+        ctx.strokeStyle = "rgba(244, 63, 94, 0.75)";
+        ctx.fillStyle = "rgba(244, 63, 94, 0.75)";
+        ctx.lineWidth = brushSize;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        ctx.beginPath();
+        ctx.moveTo(lastPointRef.current.x, lastPointRef.current.y);
+        ctx.lineTo(coords.x, coords.y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(coords.x, coords.y, brushSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        lastPointRef.current = { x: coords.x, y: coords.y };
+        setHasManualSelection(true);
+      }
+    } else if (brushTool === "box" && boxStart) {
+      setBoxCurrent({ x: coords.x, y: coords.y });
+    }
+  };
+
+  const handleEndDraw = () => {
+    if (removalMode !== "manual" || !isDrawing) return;
+
+    if (brushTool === "box" && boxStart && boxCurrent && maskCanvasRef.current) {
+      const ctx = maskCanvasRef.current.getContext("2d");
+      if (ctx) {
+        const x = Math.min(boxStart.x, boxCurrent.x);
+        const y = Math.min(boxStart.y, boxCurrent.y);
+        const w = Math.abs(boxCurrent.x - boxStart.x);
+        const h = Math.abs(boxCurrent.y - boxStart.y);
+
+        if (w > 3 && h > 3) {
+          ctx.fillStyle = "rgba(244, 63, 94, 0.75)";
+          ctx.fillRect(x, y, w, h);
+          setHasManualSelection(true);
+        }
+      }
+      setBoxStart(null);
+      setBoxCurrent(null);
+    }
+
+    setIsDrawing(false);
+    lastPointRef.current = null;
+  };
+
+  const handleExecuteRemoval = (targetObj?: any) => {
+    // 1. Manual Priority: If user has drawn manual mask strokes or selected an area
+    if (hasManualSelection && maskCanvasRef.current) {
+      const maskDataUrl = maskCanvasRef.current.toDataURL("image/png");
+      setSelectionWarning(null);
+      onRemoveDetectedObject?.({
+        id: `manual_${Date.now()}`,
+        label: "Selected Area",
+        selection_mode: "manual",
+        mask_base64: maskDataUrl,
+        mask_width: maskCanvasRef.current.width,
+        mask_height: maskCanvasRef.current.height,
+      });
+      return;
+    }
+
+    // 2. If user is in manual mode but has not drawn anything
+    if (removalMode === "manual" && !hasManualSelection) {
+      setSelectionWarning("Please brush over an object or select an area to remove.");
+      setTimeout(() => setSelectionWarning(null), 3500);
+      return;
+    }
+
+    // 3. YOLO Object Selection: Clicked detected object
+    const objToRemove =
+      targetObj || (selectedDetectedId ? detectedObjects.find((o) => o.id === selectedDetectedId) : null);
+    if (!objToRemove) {
+      setSelectionWarning("Please select an object or brush an area to remove.");
+      setTimeout(() => setSelectionWarning(null), 3500);
+      return;
+    }
+    setSelectionWarning(null);
+    onRemoveDetectedObject?.(objToRemove);
+  };
 
   // Moving existing placed item on canvas
   const [draggingPlacedId, setDraggingPlacedId] = useState<string | null>(null);
@@ -136,6 +351,7 @@ export default function RoomCanvas({
 
   // Mouse drag logic for repositioning placed items on canvas
   const handleMouseDownItem = (e: React.MouseEvent, item: PlacedItem) => {
+    if (removalMode === "manual") return;
     e.preventDefault();
     e.stopPropagation();
     setSelectedItemId(item.id);
@@ -153,7 +369,7 @@ export default function RoomCanvas({
   };
 
   const handleMouseMoveCanvas = (e: React.MouseEvent) => {
-    if (!draggingPlacedId || !canvasContainerRef.current) return;
+    if (!draggingPlacedId || !canvasContainerRef.current || removalMode === "manual") return;
 
     const rect = canvasContainerRef.current.getBoundingClientRect();
     const newPxX = e.clientX - rect.left - dragOffset.x;
@@ -206,16 +422,12 @@ export default function RoomCanvas({
     if (placedItems.length === 0) return roomImage;
 
     try {
-      // 1. Load room background image
       const bgImg = await loadImageElement(roomImage);
-
-      // 2. Measure canvas container dimensions
       const container = canvasContainerRef.current;
       const rect = container?.getBoundingClientRect();
       const containerWidth = rect?.width || 1200;
       const containerHeight = rect?.height || 750;
 
-      // High resolution canvas target: match at least 1600px or background native width
       const targetWidth = Math.max(1600, bgImg.naturalWidth || 1600);
       const targetHeight = Math.round(targetWidth * (containerHeight / containerWidth)) || bgImg.naturalHeight || 1000;
 
@@ -225,7 +437,6 @@ export default function RoomCanvas({
       const ctx = canvas.getContext("2d");
       if (!ctx) return roomImage;
 
-      // 3. Draw base background room image with object-cover calculation
       const imgRatio = (bgImg.naturalWidth || targetWidth) / (bgImg.naturalHeight || targetHeight);
       const canvasRatio = targetWidth / targetHeight;
       let sWidth = bgImg.naturalWidth || targetWidth;
@@ -247,7 +458,6 @@ export default function RoomCanvas({
 
       ctx.drawImage(bgImg, sx, sy, sWidth, sHeight, 0, 0, targetWidth, targetHeight);
 
-      // 4. Draw all placed furniture items in exact order, positions, scales, and rotations
       for (const item of placedItems) {
         try {
           const itemImgUrl = item.image_url;
@@ -266,8 +476,6 @@ export default function RoomCanvas({
           const rotation = item.rotation || 0;
 
           ctx.save();
-
-          // Subtle natural drop shadow matching UI styling
           ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
           ctx.shadowBlur = Math.round(18 * (targetWidth / 1200));
           ctx.shadowOffsetX = 0;
@@ -290,7 +498,6 @@ export default function RoomCanvas({
     }
   };
 
-  // Download final composed room design image with all placed furniture
   const handleDownloadSnapshot = async () => {
     if (!roomImage) return;
     const dataUrl = await generateCompositeDataUrl();
@@ -301,14 +508,12 @@ export default function RoomCanvas({
     link.click();
   };
 
-  // Open latest room design image in Fullscreen Zoom Preview
   const handleZoomClick = async () => {
     if (!roomImage || !onZoomPreview) return;
     const dataUrl = await generateCompositeDataUrl();
     onZoomPreview(dataUrl || roomImage);
   };
 
-  // Automatically generate and report latest composite room design image to parent
   useEffect(() => {
     if (!roomImage || !onCompositeChange) return;
     const timer = setTimeout(async () => {
@@ -406,7 +611,222 @@ export default function RoomCanvas({
         </div>
       </div>
 
-      {/* Main Visual Canvas Area (Clean Room Photo with Placed Furniture - NO Text/Cards/Labels over Photo) */}
+      {/* Remove Object & Selection Action Bar (Both YOLO Selection & Manual Brush Selection) */}
+      {roomImage && (
+        <div
+          className={`px-4 py-2.5 border-b flex flex-wrap items-center justify-between gap-2.5 transition-colors ${
+            isLight ? "bg-amber-50/70 border-amber-200/60" : "bg-amber-950/30 border-amber-900/40"
+          }`}
+        >
+          {/* Mode Tabs: Auto Detected vs Manual Brush Selection */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div
+              className={`p-0.5 rounded-lg border flex items-center gap-0.5 ${
+                isLight ? "bg-stone-200/70 border-stone-300" : "bg-slate-900/80 border-slate-700"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setRemovalMode("detect");
+                }}
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  removalMode === "detect"
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : isLight
+                    ? "text-stone-700 hover:text-stone-900"
+                    : "text-stone-300 hover:text-white"
+                }`}
+              >
+                <span>🛋️</span>
+                <span>Auto Detected {detectedObjects?.length > 0 ? `(${detectedObjects.length})` : ""}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setRemovalMode("manual");
+                  setSelectedDetectedId(null);
+                  setSelectedItemId(null);
+                }}
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  removalMode === "manual"
+                    ? "bg-rose-600 text-white shadow-xs ring-1 ring-rose-400/40"
+                    : isLight
+                    ? "text-stone-700 hover:text-stone-900"
+                    : "text-stone-300 hover:text-white"
+                }`}
+              >
+                <span>🖌️</span>
+                <span>Brush / Select Area</span>
+                {hasManualSelection && (
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                )}
+              </button>
+            </div>
+
+            {/* Mode 1: YOLO Detected Objects Chips */}
+            {removalMode === "detect" && detectedObjects && detectedObjects.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap ml-1">
+                {detectedObjects.map((obj) => {
+                  const isSel = selectedDetectedId === obj.id;
+                  return (
+                    <button
+                      key={obj.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDetectedId(isSel ? null : obj.id);
+                        setSelectedItemId(null);
+                        setSelectionWarning(null);
+                      }}
+                      title={isSel ? `Click to deselect ${obj.label}` : `Select ${obj.label} to remove`}
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1 ${
+                        isSel
+                          ? "bg-rose-600 text-white border-rose-500 shadow-sm ring-2 ring-rose-400/40"
+                          : isLight
+                          ? "bg-white hover:bg-stone-100 text-stone-800 border-stone-300"
+                          : "bg-slate-800 hover:bg-slate-700 text-stone-200 border-slate-700"
+                      }`}
+                    >
+                      <span>{obj.label}</span>
+                      {isSel && (
+                        <span className="text-[10px] bg-white/20 px-1 py-0.2 rounded font-bold">Selected</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Mode 2: Manual Brush Sub-controls (Brush vs Box Tool, Brush Size, Clear Selection) */}
+            {removalMode === "manual" && (
+              <div className="flex items-center gap-2 flex-wrap ml-1">
+                {/* Brush vs Box Tool */}
+                <div
+                  className={`p-0.5 rounded-lg border flex items-center gap-0.5 ${
+                    isLight ? "bg-white border-stone-300" : "bg-slate-900 border-slate-700"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setBrushTool("brush")}
+                    title="Brush Selection (Freehand paint over object)"
+                    className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                      brushTool === "brush"
+                        ? "bg-rose-600 text-white"
+                        : isLight
+                        ? "text-stone-600 hover:text-stone-900"
+                        : "text-stone-300 hover:text-white"
+                    }`}
+                  >
+                    <FiEdit3 className="text-xs" />
+                    <span>Brush</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBrushTool("box")}
+                    title="Box Selection (Drag rectangular area)"
+                    className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                      brushTool === "box"
+                        ? "bg-rose-600 text-white"
+                        : isLight
+                        ? "text-stone-600 hover:text-stone-900"
+                        : "text-stone-300 hover:text-white"
+                    }`}
+                  >
+                    <FiSquare className="text-xs" />
+                    <span>Box</span>
+                  </button>
+                </div>
+
+                {/* Brush Size Selector */}
+                {brushTool === "brush" && (
+                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                    <span className={`text-[11px] ${isLight ? "text-stone-600" : "text-stone-400"}`}>Size:</span>
+                    {[
+                      { label: "S", size: 16 },
+                      { label: "M", size: 32 },
+                      { label: "L", size: 52 },
+                    ].map((opt) => (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        onClick={() => setBrushSize(opt.size)}
+                        className={`w-6 h-6 rounded-md text-[11px] font-bold border transition cursor-pointer flex items-center justify-center ${
+                          brushSize === opt.size
+                            ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                            : isLight
+                            ? "bg-white text-stone-700 border-stone-300 hover:bg-stone-100"
+                            : "bg-slate-800 text-stone-300 border-slate-700 hover:bg-slate-700"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Clear Selection Mask */}
+                {hasManualSelection && (
+                  <button
+                    type="button"
+                    onClick={clearManualMask}
+                    title="Clear painted selection mask"
+                    className={`px-2 py-1 rounded-lg border text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                      isLight
+                        ? "bg-stone-100 hover:bg-rose-50 text-stone-700 hover:text-rose-600 border-stone-300 hover:border-rose-300"
+                        : "bg-slate-800 hover:bg-rose-950/40 text-stone-300 hover:text-rose-300 border-slate-700 hover:border-rose-700"
+                    }`}
+                  >
+                    <FiRotateCcw className="text-xs" />
+                    <span>Clear Mask</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right Action: Warning + Remove Object / Remove Selected Area button */}
+          <div className="flex items-center gap-2">
+            {selectionWarning && (
+              <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 animate-in fade-in duration-150">
+                ⚠️ {selectionWarning}
+              </span>
+            )}
+            <button
+              disabled={Boolean(removingObjectId)}
+              onClick={() => handleExecuteRemoval()}
+              title={
+                hasManualSelection
+                  ? "Remove the manually selected/brushed area from room photo"
+                  : selectedDetectedId
+                  ? "Remove the selected object from room photo"
+                  : removalMode === "manual"
+                  ? "Please brush or select the object area you want to remove"
+                  : "Please select an object to remove"
+              }
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                hasManualSelection || selectedDetectedId
+                  ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/30 ring-2 ring-rose-400/30 animate-pulse"
+                  : isLight
+                  ? "bg-stone-200 hover:bg-stone-300 text-stone-700 border border-stone-300"
+                  : "bg-slate-800 hover:bg-slate-700 text-stone-300 border border-slate-700"
+              }`}
+            >
+              <span>✂️</span>
+              <span>
+                {hasManualSelection
+                  ? "Remove Selected Area"
+                  : removalMode === "manual"
+                  ? "Brush Area to Remove"
+                  : "Remove Object"}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Visual Canvas Area (Clean Room Photo with Placed Furniture & Manual Selection Layer) */}
       <div
         ref={canvasContainerRef}
         onDragOver={handleDragOver}
@@ -415,8 +835,10 @@ export default function RoomCanvas({
         onMouseMove={handleMouseMoveCanvas}
         onMouseUp={handleMouseUpCanvas}
         onClick={(e) => {
+          if (removalMode === "manual") return;
           setSelectedItemId(null);
           setSelectedDetectedId(null);
+          setSelectionWarning(null);
           if (canvasContainerRef.current && detectedObjects && detectedObjects.length > 0) {
             const rect = canvasContainerRef.current.getBoundingClientRect();
             const clickXPct = ((e.clientX - rect.left) / rect.width) * 100;
@@ -467,7 +889,7 @@ export default function RoomCanvas({
         )}
 
         {/* Detected Existing Furniture Objects in Room Photo (Interactive 1-Click Clean Removal) */}
-        {detectedObjects && detectedObjects.length > 0 && detectedObjects.map((obj) => {
+        {removalMode === "detect" && detectedObjects && detectedObjects.length > 0 && detectedObjects.map((obj) => {
           const isRemovingThis = removingObjectId === obj.id;
           const isSelected = selectedDetectedId === obj.id;
           const bx = obj.bbox_pct?.x ?? 0;
@@ -489,31 +911,35 @@ export default function RoomCanvas({
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSelectedDetectedId(obj.id);
+                  setSelectedDetectedId(isSelected ? null : obj.id);
+                  setSelectedItemId(null);
+                  setSelectionWarning(null);
                 }}
-                title={`Selected: ${obj.label}. Click 'Remove' to cleanly remove it from the room.`}
+                title={`Selected: ${obj.label}. Click 'Remove Object' to cleanly remove it from the room.`}
                 className={`absolute z-24 rounded-lg pointer-events-auto cursor-pointer transition-all duration-150 ${
                   isSelected
-                    ? "border-2 border-dashed border-rose-500 bg-rose-500/10 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+                    ? "border-2 border-dashed border-rose-500 bg-rose-500/15 shadow-[0_0_15px_rgba(244,63,94,0.35)]"
                     : "border border-dashed border-white/30 hover:border-indigo-400 hover:bg-indigo-500/10"
                 }`}
               />
 
-              {/* Centered Removal Action Badge */}
+              {/* Centered Removal Action Badge on Canvas */}
               <div
                 style={{
                   left: `${x}%`,
                   top: `${y}%`,
                   transform: "translate(-50%, -50%)",
                 }}
-                className="absolute z-26 pointer-events-auto group animate-in fade-in duration-200"
+                className={`absolute z-26 pointer-events-auto group animate-in fade-in duration-200 ${
+                  isSelected ? "opacity-100" : "opacity-0 hover:opacity-100 focus-within:opacity-100"
+                }`}
               >
                 <button
                   suppressHydrationWarning
                   disabled={Boolean(removingObjectId)}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onRemoveDetectedObject?.(obj);
+                    handleExecuteRemoval(obj);
                   }}
                   title={`Click to cleanly remove ONLY this ${obj.label} from the room photo`}
                   className={`px-3 py-1.5 rounded-full text-[11px] font-bold shadow-xl border backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-50 ${
@@ -529,18 +955,66 @@ export default function RoomCanvas({
                   ) : (
                     <span className="text-xs">✂️</span>
                   )}
-                  <span>Remove {obj.label}</span>
+                  <span>Remove Object</span>
                 </button>
               </div>
             </React.Fragment>
           );
         })}
 
+        {/* Interactive Manual Mask Drawing Layer */}
+        <canvas
+          ref={maskCanvasRef}
+          onMouseDown={handleStartDraw}
+          onMouseMove={handleMoveDraw}
+          onMouseUp={handleEndDraw}
+          onMouseLeave={() => {
+            handleEndDraw();
+            setCursorPos(null);
+          }}
+          onTouchStart={handleStartDraw}
+          onTouchMove={handleMoveDraw}
+          onTouchEnd={handleEndDraw}
+          className={`absolute inset-0 w-full h-full z-28 transition-opacity ${
+            removalMode === "manual" ? "pointer-events-auto cursor-crosshair" : "pointer-events-none opacity-90"
+          }`}
+          style={{
+            touchAction: "none",
+          }}
+        />
+
+        {/* Box Dragging Visual Box Overlay */}
+        {isDrawing && brushTool === "box" && boxStart && boxCurrent && (
+          <div
+            style={{
+              left: `${Math.min(boxStart.x, boxCurrent.x)}px`,
+              top: `${Math.min(boxStart.y, boxCurrent.y)}px`,
+              width: `${Math.abs(boxCurrent.x - boxStart.x)}px`,
+              height: `${Math.abs(boxCurrent.y - boxStart.y)}px`,
+            }}
+            className="absolute pointer-events-none border-2 border-dashed border-rose-500 bg-rose-500/30 rounded shadow-lg z-29"
+          />
+        )}
+
+        {/* Live Brush Ring Cursor Preview */}
+        {removalMode === "manual" && brushTool === "brush" && cursorPos && (
+          <div
+            style={{
+              left: `${cursorPos.x}px`,
+              top: `${cursorPos.y}px`,
+              width: `${brushSize}px`,
+              height: `${brushSize}px`,
+              transform: "translate(-50%, -50%)",
+            }}
+            className="absolute pointer-events-none rounded-full border-2 border-rose-500 bg-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.5)] z-30"
+          />
+        )}
+
         {/* Inpainting / Object Removal Active Overlay */}
         {removingObjectId && (
           <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-xs flex flex-col items-center justify-center text-white z-40 animate-in fade-in duration-200">
             <div className="w-9 h-9 border-3 border-indigo-400 border-t-transparent rounded-full animate-spin mb-2.5"></div>
-            <p className="text-xs font-bold tracking-wide">Removing Selected Object & Infilling Room Structure...</p>
+            <p className="text-xs font-bold tracking-wide">Removing Selected Area & Infilling Room Structure...</p>
             <p className="text-[11px] text-stone-300 mt-1">Preserving walls, floor, lighting, and untouched room objects</p>
           </div>
         )}

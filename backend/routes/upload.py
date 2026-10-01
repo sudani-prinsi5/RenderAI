@@ -74,21 +74,23 @@ def upload_image():
 
         detected_objects = []
         detection_details = {}
+        detected_objects_list = []
 
         if not is_empty_room:
-            results = model(filepath, conf=0.20)
-            result = results[0]
-
-            print("\n========== DETECTED OBJECTS ==========")
-            if len(result.boxes) == 0:
-                print("No Objects Detected")
-            else:
+            from services.room_cleaner import detect_room_objects
+            try:
+                detected_objects_list = detect_room_objects(filepath)
+                detected_objects = [o["name"] for o in detected_objects_list]
+                detection_details = {"detected_objects": detected_objects_list}
+            except Exception as e:
+                print(f"Error in detect_room_objects: {e}")
+                results = model(filepath, conf=0.20)
+                result = results[0]
                 for box in result.boxes:
                     cls = int(box.cls[0])
                     conf = float(box.conf[0])
                     object_name = model.names[cls]
                     detected_objects.append(object_name)
-
                     xyxy = box.xyxy[0].tolist()
                     if object_name not in detection_details:
                         detection_details[object_name] = []
@@ -96,13 +98,14 @@ def upload_image():
                         "bbox": [int(v) for v in xyxy],
                         "confidence": round(conf, 2),
                     })
-                    print(f"{object_name} : {conf:.2f}")
 
-            detected_filename = "detected_" + filename
-            detected_path = os.path.join(RESULT_FOLDER, detected_filename)
-            result.save(filename=detected_path)
-            detected_image_path = f"/uploads/results/{detected_filename}"
-            detected_image_name = detected_filename
+            print("\n========== DETECTED OBJECTS ==========")
+            for obj in detected_objects_list:
+                print(f"{obj.get('label', obj.get('name'))} (ID: {obj.get('id')}) : conf {obj.get('confidence')}")
+
+            detected_filename = filename
+            detected_image_path = f"/uploads/{filename}"
+            detected_image_name = filename
         else:
             print("Empty room – skipping YOLO detection")
             detected_filename = None
