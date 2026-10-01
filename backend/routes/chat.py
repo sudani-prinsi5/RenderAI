@@ -1046,6 +1046,8 @@ def remove_room_object_endpoint():
         room.original_image_name = res["cleaned_image_name"]
         room.detected_image_path = res["cleaned_image_path"]
         room.detected_image_name = res["cleaned_image_name"]
+        room.generated_image_path = res["cleaned_image_path"]
+        room.generated_image_name = res["cleaned_image_name"]
 
         remaining = res.get("remaining_objects", [])
         room.total_objects = len(remaining)

@@ -416,10 +416,9 @@ export default function RoomCanvas({
     });
   };
 
-  // Helper to generate the final composite data URL with all latest placed furniture
+  // Helper to generate the final composite data URL with all latest placed furniture / cleaned room
   const generateCompositeDataUrl = async (): Promise<string | null> => {
     if (!roomImage) return null;
-    if (placedItems.length === 0) return roomImage;
 
     try {
       const bgImg = await loadImageElement(roomImage);
@@ -498,14 +497,45 @@ export default function RoomCanvas({
     }
   };
 
+  const downloadDataUrlOrBlob = async (targetUrl: string, name: string) => {
+    try {
+      if (targetUrl.startsWith("data:") || targetUrl.startsWith("blob:")) {
+        const link = document.createElement("a");
+        link.href = targetUrl;
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+
+      // Fetch blob to guarantee real file download for cross-origin URLs
+      const response = await fetch(targetUrl, { mode: "cors" });
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+    } catch {
+      const link = document.createElement("a");
+      link.href = targetUrl;
+      link.download = name;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   const handleDownloadSnapshot = async () => {
     if (!roomImage) return;
+    const filename = `room_design_${Date.now()}.png`;
     const dataUrl = await generateCompositeDataUrl();
-    if (!dataUrl) return;
-    const link = document.createElement("a");
-    link.href = dataUrl;
-    link.download = `room_design_${Date.now()}.png`;
-    link.click();
+    await downloadDataUrlOrBlob(dataUrl || roomImage, filename);
   };
 
   const handleZoomClick = async () => {
