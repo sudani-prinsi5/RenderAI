@@ -530,6 +530,15 @@ export default function ChatPage() {
         defaultX = 78;
         defaultY = 56;
       }
+    } else if (catLower.includes("chair")) {
+      const existingChairs = placedItems.filter((it) => (it.category || "").includes("chair"));
+      if (existingChairs.length === 0) {
+        defaultX = 28;
+        defaultY = 62;
+      } else {
+        defaultX = 72;
+        defaultY = 62;
+      }
     }
 
     const dropX = posX ?? defaultX;
@@ -825,12 +834,27 @@ export default function ChatPage() {
     // Check if user mentioned a category (e.g. "bed", "table", "side table", "lamp", "wardrobe")
     const lower = userText.toLowerCase();
     const matchedCategory = DATASET_CATEGORIES.find((c) => {
-      if (c.key === "table" || c.key === "bedside_table") {
+      if (c.key === "side_table") {
         return (
-          lower.includes("bedside") ||
-          lower.includes("nightstand") ||
           lower.includes("side table") ||
-          (lower.includes("table") && !lower.includes("dining"))
+          lower.includes("sidetable") ||
+          lower.includes("bedside") ||
+          lower.includes("nightstand")
+        );
+      }
+      if (c.key === "chair") {
+        return (
+          lower.includes("chair") ||
+          lower.includes("armchair") ||
+          lower.includes("recliner") ||
+          lower.includes("seating")
+        );
+      }
+      if (c.key === "table") {
+        return (
+          (lower.includes("table") || lower.includes("desk")) &&
+          !lower.includes("side") &&
+          !lower.includes("bedside")
         );
       }
       if (c.key === "bed") {
@@ -1323,7 +1347,7 @@ export default function ChatPage() {
                   <span className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ${isLight ? "text-stone-400" : "text-stone-500"}`}>
                     Add:
                   </span>
-                  {DATASET_CATEGORIES.slice(0, 4).map((cat) => (
+                  {DATASET_CATEGORIES.map((cat) => (
                     <button
                       suppressHydrationWarning
                       key={cat.key}

@@ -36,10 +36,24 @@ export const DATASET_CATEGORIES: FurnitureCategory[] = [
     description: "Solid wood, platform, and upholstered designer beds from the dataset",
   },
   {
+    key: "chair",
+    label: "Chair",
+    icon: "🪑",
+    suggestedPlacements: ["Accent Corner", "Desk Seating", "Reading Area"],
+    description: "Ergonomic, accent, and lounge chairs from the dataset",
+  },
+  {
     key: "table",
     label: "Table",
     icon: "🪵",
-    suggestedPlacements: ["Left Bedside", "Right Bedside"],
+    suggestedPlacements: ["Center Lounge", "Accent Area", "Bedside"],
+    description: "Solid wood, marble, coffee, and accent tables",
+  },
+  {
+    key: "side_table",
+    label: "Side Table",
+    icon: "🗄️",
+    suggestedPlacements: ["Left Bedside", "Right Bedside", "Lounge Side"],
     description: "Solid wood, marble, and contemporary bedside & accent tables",
   },
   {
@@ -733,6 +747,147 @@ export const REAL_FURNITURE_DATASET: DatasetFurnitureItem[] = [
     material: "Curved Hand-Finished Brass & Calacatta Marble",
     description: "Limited-edition luxury gallery lighting installation designed for elite penthouses.",
   },
+
+  // ==========================================
+  // CHAIRS - FROM furniture_dataset/chair/
+  // ==========================================
+  // Tier 1: Under ₹10,000
+  {
+    id: "chair_10k_1",
+    category: "chair",
+    name: "chair",
+    label: "Ergonomic High-Back Study Chair",
+    budgetBracket: "buget_10k",
+    budgetLabel: "Under ₹10,000",
+    price: 6499,
+    image_url: "/furniture_dataset/chair/buget_10k/chair1.jpg",
+    dimensions: { length_ft: 2.0, width_ft: 2.0, height_ft: 3.8 },
+    material: "Breathable Mesh & Heavy-Duty Base",
+    description: "High-back ergonomic computer desk chair with lumbar support and smooth casters.",
+  },
+  {
+    id: "chair_10k_2",
+    category: "chair",
+    name: "chair",
+    label: "Velvet Luxury Accent Armchair",
+    budgetBracket: "buget_10k",
+    budgetLabel: "Under ₹10,000",
+    price: 8499,
+    image_url: "/furniture_dataset/chair/buget_10k/chair2.jpg",
+    dimensions: { length_ft: 2.4, width_ft: 2.4, height_ft: 3.0 },
+    material: "Plush Velvet & Gold-Toned Steel",
+    description: "Curved barrel back armchair with soft velvet upholstery and tapered brass legs.",
+  },
+  {
+    id: "chair_10k_3",
+    category: "chair",
+    name: "chair",
+    label: "Nordic Minimalist Wooden Stool Chair",
+    budgetBracket: "buget_10k",
+    budgetLabel: "Under ₹10,000",
+    price: 4500,
+    image_url: "/furniture_dataset/chair/buget_10k/chair3.jpg",
+    dimensions: { length_ft: 1.8, width_ft: 1.8, height_ft: 2.6 },
+    material: "Solid Natural Ashwood",
+    description: "Minimalist Scandinavian wooden chair crafted for bedrooms and vanity spaces.",
+  },
+
+  // Tier 2: ₹10,000 - ₹20,000
+  {
+    id: "chair_20k_1",
+    category: "chair",
+    name: "chair",
+    label: "Pro Ergonomic Gaming & Work Chair",
+    budgetBracket: "buget_10k_to_20k",
+    budgetLabel: "₹10,000 - ₹20,000",
+    price: 16990,
+    image_url: "/furniture_dataset/chair/buget_10k_to_20k/chair4.jpg",
+    dimensions: { length_ft: 2.2, width_ft: 2.2, height_ft: 4.2 },
+    material: "Spandex Fabric & Steel Frame",
+    description: "Premium breathable fabric chair with 4D armrests, magnetic neck cushion, and reclining back.",
+  },
+  {
+    id: "chair_20k_2",
+    category: "chair",
+    name: "chair",
+    label: "Plush Comfort Recliner Armchair",
+    budgetBracket: "buget_10k_to_20k",
+    budgetLabel: "₹10,000 - ₹20,000",
+    price: 14999,
+    image_url: "/furniture_dataset/chair/buget_10k_to_20k/chair5.jpg",
+    dimensions: { length_ft: 3.0, width_ft: 2.8, height_ft: 3.3 },
+    material: "Pocket Spring & Microfiber",
+    description: "Multi-stage manual recliner armchair with padded lumbar support and footrest extension.",
+  },
+  {
+    id: "chair_20k_3",
+    category: "chair",
+    name: "chair",
+    label: "Scandinavian Modern Lounge Chair",
+    budgetBracket: "buget_10k_to_20k",
+    budgetLabel: "₹10,000 - ₹20,000",
+    price: 18500,
+    image_url: "/furniture_dataset/chair/buget_10k_to_20k/chair6.jpg",
+    dimensions: { length_ft: 2.5, width_ft: 2.5, height_ft: 3.2 },
+    material: "Solid Oak & Textured Wool",
+    description: "Architectural low-profile lounge chair tailored for relaxed bedroom reading corners.",
+  },
+
+  // Tier 3: ₹20,000 - ₹30,000
+  {
+    id: "chair_30k_1",
+    category: "chair",
+    name: "chair",
+    label: "Mid-Century Artisan Walnut Armchair",
+    budgetBracket: "buget_20k_to_30k",
+    budgetLabel: "₹20,000 - ₹30,000",
+    price: 24500,
+    image_url: "/furniture_dataset/chair/buget_20k_to_30k/chair7.jpg",
+    dimensions: { length_ft: 2.6, width_ft: 2.6, height_ft: 3.4 },
+    material: "Solid Dark Walnut & Top-Grain Leather",
+    description: "Sculptural wooden frame with hand-stitched leather seat for master bedrooms.",
+  },
+  {
+    id: "chair_30k_2",
+    category: "chair",
+    name: "chair",
+    label: "Designer Bouclé Lounge Club Chair",
+    budgetBracket: "buget_20k_to_30k",
+    budgetLabel: "₹20,000 - ₹30,000",
+    price: 27900,
+    image_url: "/furniture_dataset/chair/buget_20k_to_30k/chair8.jpg",
+    dimensions: { length_ft: 2.8, width_ft: 2.8, height_ft: 3.2 },
+    material: "Cream Bouclé & Brass Base",
+    description: "Ultra-cozy rounded club chair upholstered in cloud-soft textured bouclé fabric.",
+  },
+
+  // Tier 4: ₹30,000 - ₹40,000+
+  {
+    id: "chair_40k_1",
+    category: "chair",
+    name: "chair",
+    label: "Executive Italian Leather Armchair",
+    budgetBracket: "buget_30k_to_40k",
+    budgetLabel: "₹30,000 - ₹40,000+",
+    price: 34500,
+    image_url: "/furniture_dataset/chair/buget_30k_to_40k/chair9.jpg",
+    dimensions: { length_ft: 2.8, width_ft: 2.8, height_ft: 3.5 },
+    material: "Italian Semi-Aniline Leather",
+    description: "Handcrafted masterclass lounge chair with deep comfort cushioning.",
+  },
+  {
+    id: "chair_40k_2",
+    category: "chair",
+    name: "chair",
+    label: "Imperial Velvet Statement Chair",
+    budgetBracket: "buget_30k_to_40k",
+    budgetLabel: "₹30,000 - ₹40,000+",
+    price: 38900,
+    image_url: "/furniture_dataset/chair/buget_30k_to_40k/chair10.jpg",
+    dimensions: { length_ft: 3.0, width_ft: 3.0, height_ft: 3.6 },
+    material: "Royal Velvet & Hand-Carved Frame",
+    description: "Opulent statement wingback chair designed for luxury suites and grand master bedrooms.",
+  },
 ];
 
 /**
@@ -816,15 +971,30 @@ export function getDatasetItems(category: string, userBudget?: number, bracketKe
     if (normCat === "all") return true;
     const itCat = (it.category || "").toLowerCase().replace(/[\s_-]+/g, "");
     const itName = (it.name || "").toLowerCase().replace(/[\s_-]+/g, "");
+    const itLabel = (it.label || "").toLowerCase();
 
-    if (normCat.includes("table") || normCat.includes("nightstand") || normCat.includes("bedside")) {
+    if (normCat.includes("chair") || normCat.includes("seat") || normCat.includes("recliner")) {
+      return itCat.includes("chair") || itName.includes("chair") || itLabel.includes("chair");
+    }
+    if (normCat.includes("sidetable") || normCat.includes("side_table") || normCat.includes("nightstand") || normCat.includes("bedside")) {
       return (
+        itCat.includes("side_table") ||
         itCat.includes("table") ||
         itCat.includes("nightstand") ||
         itCat.includes("bedside") ||
         itName.includes("table") ||
-        itName.includes("nightstand") ||
-        itName.includes("bedside")
+        itLabel.includes("bedside") ||
+        itLabel.includes("side table") ||
+        itLabel.includes("nightstand")
+      );
+    }
+    if (normCat.includes("table") || normCat.includes("desk")) {
+      return (
+        itCat.includes("table") ||
+        itCat.includes("desk") ||
+        itCat.includes("side_table") ||
+        itName.includes("table") ||
+        itLabel.includes("table")
       );
     }
     if (normCat.includes("lamp") || normCat.includes("light")) {
