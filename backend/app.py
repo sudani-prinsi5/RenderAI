@@ -103,7 +103,7 @@ mail.init_app(app)
 # -----------------------------
 CORS(
     app,
-    resources={r"/*": {"origins": "http://localhost:3000"}},
+    resources={r"/*": {"origins": ["http://localhost:3000", "https://render-ai-tau.vercel.app"]}},
     supports_credentials=True,
 )
 

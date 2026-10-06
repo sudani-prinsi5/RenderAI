@@ -883,7 +883,8 @@ export async function getOrExtractItemImageUrl(item: DatasetFurnitureItem): Prom
     if (res.data?.success && res.data.extracted_image_url) {
       let url = res.data.extracted_image_url as string;
       if (url.startsWith("/")) {
-        url = `http://127.0.0.1:5000${url}`;
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
+        url = `${apiBase}${url}`;
       }
       extractionCache.set(key, url);
       item.extracted_image_url = url;
