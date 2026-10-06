@@ -127,6 +127,11 @@ export default function UploadPage() {
       if (res.data.room_id) {
         setRoomId(res.data.room_id);
         try {
+          const userStr = localStorage.getItem("user");
+          const userId = userStr ? JSON.parse(userStr)?.user_id : undefined;
+          if (userId) {
+            localStorage.removeItem(`room_design_workspace_state_user_${userId}`);
+          }
           localStorage.removeItem("room_design_workspace_state");
         } catch {}
       }

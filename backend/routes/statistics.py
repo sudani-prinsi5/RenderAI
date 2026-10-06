@@ -20,11 +20,10 @@ def get_statistics():
     try:
         user_id = request.args.get("user_id", type=int)
         
-        query = RoomUpload.query
-        if user_id:
-            query = query.filter_by(user_id=user_id)
-            
-        rooms = query.all()
+        if not user_id:
+            rooms = []
+        else:
+            rooms = RoomUpload.query.filter_by(user_id=user_id).all()
         
         total_rooms = len(rooms)
         empty_rooms = sum(1 for r in rooms if r.is_empty_room)

@@ -45,11 +45,15 @@ def _serialize_design(room, include_history=False):
 def my_designs():
     try:
         user_id = request.args.get("user_id", type=int)
-        query = RoomUpload.query.order_by(RoomUpload.id.desc())
 
-        if user_id:
-            query = query.filter_by(user_id=user_id)
+        if not user_id:
+            return jsonify({
+                "success": True,
+                "count": 0,
+                "designs": [],
+            })
 
+        query = RoomUpload.query.filter_by(user_id=user_id).order_by(RoomUpload.id.desc())
         rooms = query.all()
         items = [_serialize_design(room) for room in rooms]
 
@@ -66,9 +70,14 @@ def my_designs():
 @designs.route("/designs/<int:room_id>", methods=["GET"])
 def design_detail(room_id):
     try:
-        room = db.session.get(RoomUpload, room_id)
+        user_id = request.args.get("user_id", type=int)
+
+        if not user_id:
+            return jsonify({"success": False, "message": "Authentication required. user_id is missing."}), 401
+
+        room = RoomUpload.query.filter_by(id=room_id, user_id=user_id).first()
         if room is None:
-            return jsonify({"success": False, "message": "Design not found."}), 404
+            return jsonify({"success": False, "message": "Design not found or access denied."}), 404
 
         data = _serialize_design(room, include_history=True)
         data["success"] = True

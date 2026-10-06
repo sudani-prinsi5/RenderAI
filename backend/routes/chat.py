@@ -166,32 +166,34 @@ def _serialize_room(room):
 
 
 def _get_room(room_id=None, user_id=None):
+    if not user_id:
+        return None
+    try:
+        u_id = int(user_id)
+    except (ValueError, TypeError):
+        return None
+
     if room_id:
-        if user_id:
-            user_room = RoomUpload.query.filter_by(id=room_id, user_id=user_id).first()
-            if user_room:
-                return user_room
-        return db.session.get(RoomUpload, room_id)
-    if user_id:
-        u_room = RoomUpload.query.filter_by(user_id=user_id).order_by(RoomUpload.id.desc()).first()
-        if u_room:
-            return u_room
-    return RoomUpload.query.order_by(RoomUpload.id.desc()).first()
+        try:
+            r_id = int(room_id)
+            return RoomUpload.query.filter_by(id=r_id, user_id=u_id).first()
+        except (ValueError, TypeError):
+            return None
+    return RoomUpload.query.filter_by(user_id=u_id).order_by(RoomUpload.id.desc()).first()
 
 
 @chat.route("/latest-room", methods=["GET"])
 def latest_room():
     room_id = request.args.get("room_id", type=int)
     user_id = request.args.get("user_id", type=int)
-    if room_id:
-        room = _get_room(room_id=room_id, user_id=user_id) or _get_room(room_id=room_id)
-    elif user_id:
-        room = _get_room(user_id=user_id)
-    else:
-        room = _get_room()
+
+    if not user_id:
+        return jsonify({"success": False, "message": "Authentication required. user_id is missing."}), 401
+
+    room = _get_room(room_id=room_id, user_id=user_id)
 
     if room is None:
-        return jsonify({"success": False, "message": "No room found."}), 404
+        return jsonify({"success": False, "message": "No room found for this user."}), 404
 
     data = _serialize_room(room)
     data["success"] = True
@@ -214,7 +216,7 @@ def init_room():
             room_width = float(request.form.get("room_width") or 12.0)
             room_height = float(request.form.get("room_height") or 10.0)
             is_empty_room = request.form.get("is_empty_room", "true").lower() in ("true", "1", "yes")
-            user_id = int(request.form.get("user_id") or 1)
+            raw_user_id = request.form.get("user_id")
             if "image" in request.files and request.files["image"].filename:
                 image_file = request.files["image"]
         else:
@@ -223,7 +225,15 @@ def init_room():
             room_width = float(data.get("room_width") or 12.0)
             room_height = float(data.get("room_height") or 10.0)
             is_empty_room = bool(data.get("is_empty_room", True))
-            user_id = int(data.get("user_id") or 1)
+            raw_user_id = data.get("user_id")
+
+        if not raw_user_id:
+            return jsonify({"success": False, "message": "Authentication required. user_id is missing."}), 401
+
+        try:
+            user_id = int(raw_user_id)
+        except (ValueError, TypeError):
+            return jsonify({"success": False, "message": "Invalid user_id."}), 400
 
         original_image_name = None
         original_image_path = None

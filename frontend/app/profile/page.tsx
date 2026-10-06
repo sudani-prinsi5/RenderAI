@@ -41,6 +41,17 @@ export default function Profile() {
   };
 
   const logout = () => {
+    try {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        if (u.user_id) {
+          localStorage.removeItem(`room_design_workspace_state_user_${u.user_id}`);
+        }
+      }
+    } catch {}
+    localStorage.removeItem("room_design_workspace_state");
+    localStorage.removeItem("active_room_id");
     localStorage.removeItem("user");
     router.push("/login");
   };

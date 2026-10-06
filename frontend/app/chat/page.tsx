@@ -34,7 +34,9 @@ import {
 
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
-const WORKSPACE_STORAGE_KEY = "room_design_workspace_state";
+const getWorkspaceStorageKey = (userId?: number) => {
+  return userId ? `room_design_workspace_state_user_${userId}` : "room_design_workspace_state";
+};
 
 const normalizePlacedItems = (items: any[]): PlacedItem[] => {
   if (!Array.isArray(items)) return [];
@@ -185,6 +187,12 @@ export default function ChatPage() {
 
   // Restore workspace state on initial mount
   useEffect(() => {
+    const currentUserId = getUserId();
+    if (!currentUserId) {
+      router.push("/login");
+      return;
+    }
+
     let restoredFromStorage = false;
     let targetRoomId: number | null = null;
     try {
@@ -197,11 +205,12 @@ export default function ChatPage() {
       }
     } catch {}
 
+    const storageKey = getWorkspaceStorageKey(currentUserId);
     try {
-      const savedStr = localStorage.getItem(WORKSPACE_STORAGE_KEY);
+      const savedStr = localStorage.getItem(storageKey);
       if (savedStr) {
         const saved = JSON.parse(savedStr);
-        if (saved && typeof saved === "object") {
+        if (saved && typeof saved === "object" && (!saved.userId || saved.userId === currentUserId)) {
           const savedRoomId = saved.room?.room_id;
           const matchesTarget = !targetRoomId || savedRoomId === targetRoomId;
 
@@ -264,8 +273,12 @@ export default function ChatPage() {
   // Persist workspace state to localStorage on state changes
   useEffect(() => {
     if (!isRestored) return;
+    const currentUserId = getUserId();
+    if (!currentUserId) return;
     try {
+      const storageKey = getWorkspaceStorageKey(currentUserId);
       const stateToSave = {
+        userId: currentUserId,
         room,
         roomImageSrc,
         placedItems,
@@ -281,7 +294,7 @@ export default function ChatPage() {
         setupHeight,
         timestamp: Date.now(),
       };
-      localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(stateToSave));
+      localStorage.setItem(storageKey, JSON.stringify(stateToSave));
     } catch (e) {
       console.error("Failed to save workspace state to localStorage:", e);
     }
@@ -306,8 +319,12 @@ export default function ChatPage() {
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (!isRestored) return;
+      const currentUserId = getUserId();
+      if (!currentUserId) return;
       try {
+        const storageKey = getWorkspaceStorageKey(currentUserId);
         const stateToSave = {
+          userId: currentUserId,
           room,
           roomImageSrc,
           placedItems,
@@ -323,7 +340,7 @@ export default function ChatPage() {
           setupHeight,
           timestamp: Date.now(),
         };
-        localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(stateToSave));
+        localStorage.setItem(storageKey, JSON.stringify(stateToSave));
       } catch {}
     };
 
@@ -350,7 +367,11 @@ export default function ChatPage() {
     try {
       setLoading(true);
       const userId = getUserId();
-      const params: any = userId ? { user_id: userId } : {};
+      if (!userId) {
+        router.push("/login");
+        return;
+      }
+      const params: any = { user_id: userId };
       if (targetRoomId) {
         params.room_id = targetRoomId;
       }
@@ -391,7 +412,7 @@ export default function ChatPage() {
         }
       }
     } catch {
-      // No room uploaded yet -> show setup modal
+      // No room uploaded yet for this user or unauthorized -> show setup modal with fresh new welcome
       setRoom(null);
       setRoomImageSrc(null);
       setPlacedItems([]);
@@ -947,7 +968,10 @@ export default function ChatPage() {
           setDetectedObjects(res.data.detected_objects_list);
         }
         try {
-          localStorage.removeItem(WORKSPACE_STORAGE_KEY);
+          if (userId) {
+            localStorage.removeItem(getWorkspaceStorageKey(userId));
+          }
+          localStorage.removeItem("room_design_workspace_state");
         } catch {}
         await loadLatestRoom();
       }

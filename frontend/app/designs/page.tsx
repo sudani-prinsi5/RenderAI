@@ -45,23 +45,34 @@ export default function DesignsPage() {
   const [selected, setSelected] = useState<Design | null>(null);
   const { isLight } = useTheme();
 
+  const getUserId = (): number | undefined => {
+    if (typeof window === "undefined") return undefined;
+    const userStr = localStorage.getItem("user");
+    if (!userStr) return undefined;
+    try {
+      const u = JSON.parse(userStr);
+      const id = u.user_id || u.id;
+      return id ? Number(id) : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
   useEffect(() => {
     const loadDesigns = async () => {
       try {
-        let userId: number | undefined;
-        const userStr = localStorage.getItem("user");
-        if (userStr) {
-          try {
-            userId = JSON.parse(userStr).user_id;
-          } catch {
-            /* ignore */
-          }
+        const userId = getUserId();
+        if (!userId) {
+          setDesigns([]);
+          setLoading(false);
+          return;
         }
 
-        const params = userId ? { user_id: userId } : {};
-        const res = await api.get("/my-designs", { params });
-        if (res.data.success) {
+        const res = await api.get("/my-designs", { params: { user_id: userId } });
+        if (res.data.success && Array.isArray(res.data.designs)) {
           setDesigns(res.data.designs);
+        } else {
+          setDesigns([]);
         }
       } catch {
         setDesigns([]);
@@ -75,7 +86,9 @@ export default function DesignsPage() {
 
   const openDesign = async (roomId: number) => {
     try {
-      const res = await api.get(`/designs/${roomId}`);
+      const userId = getUserId();
+      const params = userId ? { user_id: userId } : {};
+      const res = await api.get(`/designs/${roomId}`, { params });
       if (res.data.success) {
         setSelected(res.data);
       }
@@ -121,7 +134,10 @@ export default function DesignsPage() {
         setupHeight: String(design.room_height || 10),
         timestamp: Date.now(),
       };
-      localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(stateToSave));
+      const userStr = localStorage.getItem("user");
+      const userId = userStr ? JSON.parse(userStr)?.user_id : undefined;
+      const storageKey = userId ? `room_design_workspace_state_user_${userId}` : "room_design_workspace_state";
+      localStorage.setItem(storageKey, JSON.stringify(stateToSave));
       localStorage.setItem("active_room_id", String(design.room_id));
     } catch (e) {
       console.warn("Failed to set workspace state for design:", e);

@@ -24,23 +24,31 @@ def generate_design():
     try:
         data = request.get_json() or {}
         prompt = (data.get("prompt") or "").strip()
+        room_id = data.get("room_id")
         user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({"success": False, "message": "Authentication required. user_id is missing."}), 401
 
         if not prompt:
             return jsonify({"success": False, "message": "Prompt is required."}), 400
 
+        try:
+            u_id = int(user_id)
+        except (ValueError, TypeError):
+            return jsonify({"success": False, "message": "Invalid user_id."}), 400
+
         if room_id:
-            if user_id:
-                room = RoomUpload.query.filter_by(id=room_id, user_id=user_id).first() or db.session.get(RoomUpload, room_id)
-            else:
-                room = db.session.get(RoomUpload, room_id)
-        elif user_id:
-            room = RoomUpload.query.filter_by(user_id=user_id).order_by(RoomUpload.id.desc()).first()
+            try:
+                r_id = int(room_id)
+                room = RoomUpload.query.filter_by(id=r_id, user_id=u_id).first()
+            except (ValueError, TypeError):
+                room = None
         else:
-            room = RoomUpload.query.order_by(RoomUpload.id.desc()).first()
+            room = RoomUpload.query.filter_by(user_id=u_id).order_by(RoomUpload.id.desc()).first()
 
         if room is None:
-            return jsonify({"success": False, "message": "No room found."}), 404
+            return jsonify({"success": False, "message": "No room found for this user."}), 404
 
         result = process_message(prompt, room)
         room.furniture_state = json.dumps(result["furniture_state"])
