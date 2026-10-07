@@ -1,6 +1,15 @@
+import os
+import sys
+
+# Ensure backend directory and project root are always in sys.path
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
+for path in [BASE_DIR, ROOT_DIR]:
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
 from flask import Flask, send_from_directory, request, make_response, jsonify
 from flask_cors import CORS
-import os
 
 from config import (
     SQLALCHEMY_DATABASE_URI,
@@ -18,9 +27,6 @@ from routes.generate import generate
 from routes.designs import designs
 from routes.statistics import statistics
 from migrate import run_migration
-
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
 
 # Resolve upload paths consistently
 UPLOAD_CANDIDATES = [
@@ -214,18 +220,28 @@ def dataset_file(filename):
     return _serve_from_candidates(candidates, filename)
 
 # -----------------------------
-# Run Server
+# Database Initialization Helper
 # -----------------------------
-if __name__ == "__main__":
-    with app.app_context():
+def init_db(application=app):
+    """Safely initialize database tables and run migrations without crashing startup on DB connection issues."""
+    with application.app_context():
         try:
             db.create_all()
             run_migration(db)
         except Exception as e:
             print(f"Warning: Database initialization error: {e}")
 
+# Attempt database initialization on module load
+init_db(app)
+
+# -----------------------------
+# Run Server
+# -----------------------------
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    debug_mode = os.environ.get("FLASK_DEBUG", "0").lower() in ("1", "true", "yes")
     app.run(
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000)),
-        debug=True
+        port=port,
+        debug=debug_mode
     )
