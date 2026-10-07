@@ -24,8 +24,9 @@ const resolveImageUrl = (url?: string | null): string => {
   if (url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("http://") || url.startsWith("https://")) {
     return url;
   }
-  if (url.startsWith("/uploads/")) {
-    return `${API_BASE}${url}`;
+  if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
+    const cleanPath = url.startsWith("/") ? url : `/${url}`;
+    return `${API_BASE}${cleanPath}`;
   }
   return url;
 };

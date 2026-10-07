@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
-import api from "../services/api";
+import api, { API_BASE } from "../services/api";
 import { useTheme } from "../context/ThemeContext";
 import { FiUploadCloud } from "react-icons/fi";
 
@@ -103,10 +103,14 @@ export default function UploadPage() {
     formData.append("is_empty_room", String(isEmptyRoom));
 
     const userStr = localStorage.getItem("user");
+    let activeUserId: number | undefined = undefined;
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        if (user.user_id) formData.append("user_id", String(user.user_id));
+        if (user.user_id) {
+          activeUserId = Number(user.user_id);
+          formData.append("user_id", String(user.user_id));
+        }
       } catch {
         /* ignore */
       }
@@ -122,16 +126,73 @@ export default function UploadPage() {
       if (res.data.objects) setObjects(res.data.objects);
       if (res.data.object_counts) setObjectCounts(res.data.object_counts);
       if (res.data.total_objects !== undefined) setTotalObjects(res.data.total_objects);
+      
       if (res.data.room_id) {
-        setRoomId(res.data.room_id);
+        const newRoomId = Number(res.data.room_id);
+        setRoomId(newRoomId);
+
         try {
-          const userStr = localStorage.getItem("user");
-          const userId = userStr ? JSON.parse(userStr)?.user_id : undefined;
-          if (userId) {
-            localStorage.removeItem(`room_design_workspace_state_user_${userId}`);
+          const storageKey = activeUserId ? `room_design_workspace_state_user_${activeUserId}` : "room_design_workspace_state";
+
+          const rawImg = res.data.original_image || res.data.detected_image;
+          let roomImageSrc = "";
+          if (rawImg) {
+            roomImageSrc = rawImg.startsWith("http") || rawImg.startsWith("data:")
+              ? rawImg
+              : API_BASE + (rawImg.startsWith("/") ? rawImg : `/${rawImg}`);
           }
-          localStorage.removeItem("room_design_workspace_state");
-        } catch {}
+
+          const roomData = {
+            room_id: newRoomId,
+            original_image: res.data.original_image,
+            detected_image: res.data.detected_image,
+            generated_image: null,
+            is_empty_room: Boolean(res.data.is_empty_room ?? isEmptyRoom),
+            room_length: Number(res.data.room_length || roomLength),
+            room_width: Number(res.data.room_width || roomWidth),
+            room_height: Number(res.data.room_height || roomHeight),
+            total_objects: Number(res.data.total_objects || 0),
+            object_counts: res.data.object_counts || {},
+            objects: res.data.objects || [],
+            detected_objects_list: res.data.detected_objects_list || [],
+            furniture_state: [],
+            status: res.data.is_empty_room ? "Empty Room" : (res.data.total_objects > 0 ? "Detected" : "Not Detected"),
+          };
+
+          const initialGreeting = {
+            id: "msg_1",
+            sender: "AI",
+            text: roomData.is_empty_room
+              ? `Nice to meet you! I can see your uploaded room space (${roomData.room_length}×${roomData.room_width} ft). There's a generous amount of open space near the main wall.\n\nA **bed**, **table**, and **lamp** would work nicely here.`
+              : `I've analyzed your uploaded room photo (${roomData.room_length}×${roomData.room_width} ft). I detected ${roomData.total_objects} item(s) in this space.\n\nYou can remove existing items, or browse the catalog to place new furniture like a **bed**, **table**, or **lamp**.`,
+            timestamp: new Date().toISOString(),
+            step: "suggest_space",
+            suggestedCategories: ["bed", "table", "lamp"],
+          };
+
+          const stateToSave = {
+            userId: activeUserId,
+            room: roomData,
+            roomImageSrc,
+            placedItems: [],
+            messages: [initialGreeting],
+            detectedObjects: res.data.detected_objects_list || [],
+            selectedItemId: null,
+            currentPendingCategory: "bed",
+            currentBudget: 25000,
+            activeMenuCategory: "bed",
+            showSetupModal: false,
+            setupLength: String(roomData.room_length),
+            setupWidth: String(roomData.room_width),
+            setupHeight: String(roomData.room_height),
+            timestamp: Date.now(),
+          };
+
+          localStorage.setItem(storageKey, JSON.stringify(stateToSave));
+          localStorage.setItem("active_room_id", String(newRoomId));
+        } catch (storageErr) {
+          console.warn("Failed to set workspace state after upload:", storageErr);
+        }
       }
 
       setUploadComplete(true);
@@ -141,6 +202,14 @@ export default function UploadPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleContinueChat = () => {
+    if (!roomId) {
+      router.push("/chat");
+      return;
+    }
+    router.push(`/chat?room_id=${roomId}`);
   };
 
   const canContinue = uploadComplete && roomId !== null;
@@ -432,10 +501,11 @@ export default function UploadPage() {
 
               {canContinue && (
                 <button
-                  onClick={() => router.push("/chat")}
-                  className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 px-6 rounded-xl transition shadow-md cursor-pointer"
+                  onClick={handleContinueChat}
+                  className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 px-6 rounded-xl transition shadow-md cursor-pointer flex items-center justify-center gap-2"
                 >
-                  Continue with AI Chat →
+                  <span>Continue Chat</span>
+                  <span>➔</span>
                 </button>
               )}
             </div>

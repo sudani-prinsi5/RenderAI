@@ -176,9 +176,19 @@ def _get_room(room_id=None, user_id=None):
     if room_id:
         try:
             r_id = int(room_id)
-            return RoomUpload.query.filter_by(id=r_id, user_id=u_id).first()
+            room = RoomUpload.query.filter_by(id=r_id, user_id=u_id).first()
+            if room:
+                return room
+            # Allow fallback if room was uploaded without explicit user_id (user_id 1/None)
+            fallback = RoomUpload.query.filter_by(id=r_id).first()
+            if fallback and fallback.user_id in (None, 1):
+                fallback.user_id = u_id
+                db.session.commit()
+                return fallback
+            return None
         except (ValueError, TypeError):
             return None
+
     return RoomUpload.query.filter_by(user_id=u_id).order_by(RoomUpload.id.desc()).first()
 
 

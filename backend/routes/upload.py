@@ -198,6 +198,7 @@ def upload_image():
             "objects": detected_objects,
             "object_counts": dict(object_count),
             "total_objects": total,
+            "detected_objects_list": detected_objects_list,
             "is_empty_room": is_empty_room,
             "room_length": room_length,
             "room_width": room_width,

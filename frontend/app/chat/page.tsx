@@ -200,6 +200,11 @@ export default function ChatPage() {
         const qId = urlParams.get("room_id") || urlParams.get("roomId");
         if (qId) {
           targetRoomId = Number(qId);
+        } else {
+          const activeId = localStorage.getItem("active_room_id");
+          if (activeId) {
+            targetRoomId = Number(activeId);
+          }
         }
       }
     } catch {}
@@ -246,9 +251,7 @@ export default function ChatPage() {
               if (saved.setupLength) setSetupLength(saved.setupLength);
               if (saved.setupWidth) setSetupWidth(saved.setupWidth);
               if (saved.setupHeight) setSetupHeight(saved.setupHeight);
-              if (typeof saved.showSetupModal === "boolean") {
-                setShowSetupModal(saved.showSetupModal);
-              }
+              setShowSetupModal(false);
 
               setLoading(false);
               restoredFromStorage = true;
@@ -379,6 +382,11 @@ export default function ChatPage() {
       if (res.data.success) {
         const data = res.data as RoomData;
         setRoom(data);
+        setShowSetupModal(false);
+
+        try {
+          localStorage.setItem("active_room_id", String(data.room_id));
+        } catch {}
 
         // Set room image: prioritize original_image / cleaned room, fallback to detected/generated
         const imagePath = data.original_image || data.detected_image || (data as any).generated_image;
@@ -393,14 +401,10 @@ export default function ChatPage() {
         if (data.furniture_state && Array.isArray(data.furniture_state) && data.furniture_state.length > 0) {
           const loadedPlaced = normalizePlacedItems(data.furniture_state);
           setPlacedItems(loadedPlaced);
-        } else {
-          setPlacedItems([]);
         }
 
         if (data.detected_objects_list && Array.isArray(data.detected_objects_list)) {
           setDetectedObjects(data.detected_objects_list);
-        } else {
-          setDetectedObjects([]);
         }
 
         // Restore chat history if exists, otherwise initialize natural chat
@@ -411,21 +415,27 @@ export default function ChatPage() {
         }
       }
     } catch {
-      // No room uploaded yet for this user or unauthorized -> show setup modal with fresh new welcome
-      setRoom(null);
-      setRoomImageSrc(null);
-      setPlacedItems([]);
-      setSelectedItemId(null);
-      setShowSetupModal(true);
-      setMessages([
-        {
-          id: "welcome_init",
-          sender: "AI",
-          text: "Hello! I'm your AI Interior Designer. 🏡\n\nPlease upload a photo of your room or configure your room dimensions to start our interactive design session.",
-          timestamp: new Date().toISOString(),
-          step: "greeting",
-        },
-      ]);
+      // Only show setup modal if there is truly no existing room in state
+      setRoom((prev) => {
+        if (prev) {
+          setShowSetupModal(false);
+          return prev;
+        }
+        setShowSetupModal(true);
+        setMessages((prevMsgs) => {
+          if (prevMsgs && prevMsgs.length > 0) return prevMsgs;
+          return [
+            {
+              id: "welcome_init",
+              sender: "AI",
+              text: "Hello! I'm your AI Interior Designer. 🏡\n\nPlease upload a photo of your room or configure your room dimensions to start our interactive design session.",
+              timestamp: new Date().toISOString(),
+              step: "greeting",
+            },
+          ];
+        });
+        return null;
+      });
     } finally {
       setLoading(false);
     }
