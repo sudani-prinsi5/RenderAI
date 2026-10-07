@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
-import api from "../services/api";
+import api, { API_BASE } from "../services/api";
 import { useTheme } from "../context/ThemeContext";
 import { FiLayers, FiDownload } from "react-icons/fi";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
 
 interface FurnitureItem {
   id: string;

@@ -61,7 +61,7 @@ def _resolve_image(source_path_or_url):
     if not source_path_or_url:
         return None
 
-    src = source_path_or_url.strip()
+    src = str(source_path_or_url).strip()
 
     # Remote URL
     if src.startswith("http://") or src.startswith("https://"):
@@ -95,19 +95,44 @@ def _resolve_image(source_path_or_url):
         sub = rel_src[rel_src.find("furniture_dataset"):].replace("/", os.sep).replace("\\", os.sep)
         possible_paths.append(os.path.join(ROOT_DIR, sub))
         possible_paths.append(os.path.join(ROOT_DIR, "frontend", "public", sub))
+        possible_paths.append(os.path.join(BASE_DIR, "frontend", "public", sub))
     # 5. If path starts with uploads
     if "uploads" in rel_src:
         sub = rel_src[rel_src.find("uploads"):].replace("/", os.sep).replace("\\", os.sep)
         possible_paths.append(os.path.join(ROOT_DIR, sub))
         possible_paths.append(os.path.join(BASE_DIR, sub))
+        possible_paths.append(os.path.join(UPLOAD_FOLDER, sub.replace("uploads" + os.sep, "")))
     # 6. If path is in assets
     possible_paths.append(os.path.join(BASE_DIR, "assets", os.path.basename(src)))
 
     for p in possible_paths:
         if os.path.exists(p) and os.path.isfile(p):
-            img = cv2.imread(p, cv2.IMREAD_COLOR)
-            if img is not None:
-                return img
+            try:
+                img = cv2.imread(p, cv2.IMREAD_COLOR)
+                if img is not None:
+                    return img
+            except Exception as e:
+                print(f"Warning: Failed to read local image {p}: {e}")
+
+    # 7. Fallback to production frontend / local frontend if relative dataset path not found locally
+    if "furniture_dataset" in rel_src or "uploads" in rel_src:
+        remote_fallbacks = [
+            f"https://render-ai-tau.vercel.app/{rel_src}",
+            f"http://localhost:3000/{rel_src}",
+        ]
+        for f_url in remote_fallbacks:
+            try:
+                req = urllib.request.Request(
+                    f_url,
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    arr = np.asarray(bytearray(resp.read()), dtype=np.uint8)
+                    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+                    if img is not None:
+                        return img
+            except Exception:
+                pass
 
     return None
 
@@ -240,7 +265,11 @@ def extract_and_segment_object(image_source, category="bed", force_refresh=False
                 print(f"GrabCut fallback error: {e}")
                 cropped = rgba
 
+        if cropped is None or getattr(cropped, "size", 0) == 0:
+            cropped = rgba
+
         try:
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
             cv2.imwrite(cache_path, cropped)
             return web_path
         except Exception as e:
@@ -362,7 +391,11 @@ def extract_and_segment_object(image_source, category="bed", force_refresh=False
             print(f"Adaptive segmentation error for {cat_clean}: {e}")
             cropped = rgba
 
+    if cropped is None or getattr(cropped, "size", 0) == 0:
+        cropped = rgba
+
     try:
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         cv2.imwrite(cache_path, cropped)
         return web_path
     except Exception as e:

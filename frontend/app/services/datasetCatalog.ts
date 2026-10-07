@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { API_BASE } from "./api";
 
 export interface DatasetFurnitureItem {
   id: string;
@@ -1053,8 +1053,7 @@ export async function getOrExtractItemImageUrl(item: DatasetFurnitureItem): Prom
     if (res.data?.success && res.data.extracted_image_url) {
       let url = res.data.extracted_image_url as string;
       if (url.startsWith("/")) {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
-        url = `${apiBase}${url}`;
+        url = `${API_BASE}${url}`;
       }
       extractionCache.set(key, url);
       item.extracted_image_url = url;

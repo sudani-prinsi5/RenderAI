@@ -6,7 +6,7 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import RoomCanvas, { PlacedItem } from "../components/RoomCanvas";
 import FurnitureMenu from "../components/FurnitureMenu";
-import api from "../services/api";
+import api, { API_BASE } from "../services/api";
 import { useTheme } from "../context/ThemeContext";
 import {
   FiSend,
@@ -33,7 +33,6 @@ import {
 } from "../services/datasetCatalog";
 
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
 const getWorkspaceStorageKey = (userId?: number) => {
   return userId ? `room_design_workspace_state_user_${userId}` : "room_design_workspace_state";
 };
@@ -695,18 +694,24 @@ export default function ChatPage() {
   };
 
   // Sync latest composed design image to backend database for "My Designs"
-  const handleCompositeChange = async (dataUrl: string) => {
+  const compositeSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const handleCompositeChange = (dataUrl: string) => {
     if (!room?.room_id) return;
-    try {
-      await api.post("/chat/save-composite-image", {
-        room_id: room.room_id,
-        user_id: getUserId(),
-        composite_image: dataUrl,
-        furniture_state: placedItems,
-      });
-    } catch (err) {
-      console.warn("Could not save composite design image to backend:", err);
+    if (compositeSaveTimeoutRef.current) {
+      clearTimeout(compositeSaveTimeoutRef.current);
     }
+    compositeSaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await api.post("/chat/save-composite-image", {
+          room_id: room.room_id,
+          user_id: getUserId(),
+          composite_image: dataUrl,
+          furniture_state: placedItems,
+        });
+      } catch (err) {
+        console.warn("Could not save composite design image to backend:", err);
+      }
+    }, 400);
   };
 
   // Cleanly remove an existing detected furniture piece from the room photo with natural inpainting
@@ -955,9 +960,7 @@ export default function ChatPage() {
         formData.append("image", uploadFile);
       }
 
-      const res = await api.post("/chat/init-room", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await api.post("/chat/init-room", formData);
 
       if (res.data) {
         setShowSetupModal(false);

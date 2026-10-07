@@ -17,6 +17,18 @@ import {
   getDatasetItems,
   prefetchCategoryExtractions,
 } from "../services/datasetCatalog";
+import { API_BASE } from "../services/api";
+
+const resolveImageUrl = (url?: string | null): string => {
+  if (!url) return "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400";
+  if (url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  if (url.startsWith("/uploads/")) {
+    return `${API_BASE}${url}`;
+  }
+  return url;
+};
 
 interface FurnitureMenuProps {
   isOpen: boolean;
@@ -170,7 +182,7 @@ export default function FurnitureMenu({
                     {/* Item Image */}
                     <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-stone-50 dark:bg-slate-900 border border-stone-100 dark:border-slate-800 flex items-center justify-center mb-3 select-none">
                       <img
-                        src={item.extracted_image_url || item.image_url}
+                        src={resolveImageUrl(item.extracted_image_url || item.image_url)}
                         alt={item.label}
                         draggable={false}
                         onDragStart={(e) => e.preventDefault()}

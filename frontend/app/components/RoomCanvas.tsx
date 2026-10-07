@@ -17,6 +17,18 @@ import {
   FiSquare,
 } from "react-icons/fi";
 import { DatasetFurnitureItem, calculateRealisticFurnitureWidthPct } from "../services/datasetCatalog";
+import { API_BASE } from "../services/api";
+
+const resolveImageUrl = (url?: string | null): string => {
+  if (!url) return "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400";
+  if (url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  if (url.startsWith("/uploads/")) {
+    return `${API_BASE}${url}`;
+  }
+  return url;
+};
 
 export interface PlacedItem {
   id: string;
@@ -403,16 +415,19 @@ export default function RoomCanvas({
   // Helper to load image as safe HTMLImageElement for canvas rendering
   const loadImageElement = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
+      const resolvedSrc = resolveImageUrl(src);
       const img = new Image();
-      img.crossOrigin = "anonymous";
+      if (resolvedSrc.startsWith("http://") || resolvedSrc.startsWith("https://")) {
+        img.crossOrigin = "anonymous";
+      }
       img.onload = () => resolve(img);
       img.onerror = () => {
         const fallback = new Image();
         fallback.onload = () => resolve(fallback);
         fallback.onerror = (err) => reject(err);
-        fallback.src = src;
+        fallback.src = resolvedSrc;
       };
-      img.src = src;
+      img.src = resolvedSrc;
     });
   };
 
@@ -427,8 +442,8 @@ export default function RoomCanvas({
       const containerWidth = rect?.width || 1200;
       const containerHeight = rect?.height || 750;
 
-      const targetWidth = Math.max(1600, bgImg.naturalWidth || 1600);
-      const targetHeight = Math.round(targetWidth * (containerHeight / containerWidth)) || bgImg.naturalHeight || 1000;
+      const targetWidth = Math.min(1280, Math.max(900, bgImg.naturalWidth || 1200));
+      const targetHeight = Math.round(targetWidth * (containerHeight / containerWidth)) || Math.min(900, bgImg.naturalHeight || 800);
 
       const canvas = document.createElement("canvas");
       canvas.width = targetWidth;
@@ -490,7 +505,7 @@ export default function RoomCanvas({
         }
       }
 
-      return canvas.toDataURL("image/png");
+      return canvas.toDataURL("image/jpeg", 0.88);
     } catch (err) {
       console.error("Error creating composite room design image:", err);
       return roomImage;
@@ -1088,7 +1103,7 @@ export default function RoomCanvas({
                 }`}
               >
                 <img
-                  src={item.image_url}
+                  src={resolveImageUrl(item.image_url)}
                   alt={item.label}
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}

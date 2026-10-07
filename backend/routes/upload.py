@@ -21,7 +21,29 @@ RESULT_FOLDER = os.path.join(UPLOAD_FOLDER, "results")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
-model = YOLO("yolov8n.pt")
+_model = None
+
+def get_yolo_model():
+    global _model
+    if _model is None:
+        candidate_paths = [
+            os.path.join(BASE_DIR, "yolov8n.pt"),
+            os.path.join(ROOT_DIR, "yolov8n.pt"),
+            "yolov8n.pt",
+        ]
+        for p in candidate_paths:
+            if os.path.exists(p):
+                try:
+                    _model = YOLO(p)
+                    break
+                except Exception as e:
+                    print(f"Warning: Failed to load YOLO from {p}: {e}")
+        if _model is None:
+            try:
+                _model = YOLO("yolov8n.pt")
+            except Exception as e:
+                print(f"Warning: Could not load default YOLO: {e}")
+    return _model
 
 
 def _parse_float(value, default=None):
@@ -44,16 +66,13 @@ def _parse_bool(value):
 @upload.route("/upload", methods=["POST"])
 def upload_image():
     try:
-        if "image" not in request.files:
-            return jsonify({"success": False, "message": "No image selected."}), 400
+        image = request.files.get("image") or request.files.get("file")
+        if not image or image.filename == "":
+            return jsonify({"success": False, "message": "No image selected. Please choose a photo."}), 400
 
-        image = request.files["image"]
-        if image.filename == "":
-            return jsonify({"success": False, "message": "No image selected."}), 400
-
-        room_length = _parse_float(request.form.get("room_length"))
-        room_width = _parse_float(request.form.get("room_width"))
-        room_height = _parse_float(request.form.get("room_height"))
+        room_length = _parse_float(request.form.get("room_length"), 14.0)
+        room_width = _parse_float(request.form.get("room_width"), 12.0)
+        room_height = _parse_float(request.form.get("room_height"), 10.0)
         is_empty_room = _parse_bool(request.form.get("is_empty_room"))
         user_id = request.form.get("user_id", 1, type=int)
 
@@ -63,8 +82,10 @@ def upload_image():
                 "message": "Room length, width, and height are required.",
             }), 400
 
-        filename = secure_filename(image.filename)
+        raw_filename = secure_filename(image.filename) or f"room_{user_id}.jpg"
+        filename = raw_filename
         filepath = os.path.join(UPLOAD_FOLDER, filename)
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         image.save(filepath)
 
         print("\n========== IMAGE UPLOADED ==========")
@@ -84,20 +105,25 @@ def upload_image():
                 detection_details = {"detected_objects": detected_objects_list}
             except Exception as e:
                 print(f"Error in detect_room_objects: {e}")
-                results = model(filepath, conf=0.20)
-                result = results[0]
-                for box in result.boxes:
-                    cls = int(box.cls[0])
-                    conf = float(box.conf[0])
-                    object_name = model.names[cls]
-                    detected_objects.append(object_name)
-                    xyxy = box.xyxy[0].tolist()
-                    if object_name not in detection_details:
-                        detection_details[object_name] = []
-                    detection_details[object_name].append({
-                        "bbox": [int(v) for v in xyxy],
-                        "confidence": round(conf, 2),
-                    })
+                try:
+                    yolo_mod = get_yolo_model()
+                    if yolo_mod is not None:
+                        results = yolo_mod(filepath, conf=0.20)
+                        result = results[0]
+                        for box in result.boxes:
+                            cls = int(box.cls[0])
+                            conf = float(box.conf[0])
+                            object_name = yolo_mod.names[cls]
+                            detected_objects.append(object_name)
+                            xyxy = box.xyxy[0].tolist()
+                            if object_name not in detection_details:
+                                detection_details[object_name] = []
+                            detection_details[object_name].append({
+                                "bbox": [int(v) for v in xyxy],
+                                "confidence": round(conf, 2),
+                            })
+                except Exception as yolo_err:
+                    print(f"Fallback YOLO detection error: {yolo_err}")
 
             print("\n========== DETECTED OBJECTS ==========")
             for obj in detected_objects_list:

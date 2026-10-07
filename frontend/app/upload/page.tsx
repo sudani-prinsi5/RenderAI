@@ -115,9 +115,7 @@ export default function UploadPage() {
     try {
       setLoading(true);
 
-      const res = await api.post("/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await api.post("/upload", formData);
 
       alert(res.data.message);
 

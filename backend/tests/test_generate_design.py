@@ -57,7 +57,7 @@ class GenerateDesignRouteTest(unittest.TestCase):
     def test_generate_design_returns_generated_image(self):
         response = self.client.post(
             "/generate-design",
-            json={"prompt": "Add a queen blue bed", "room_id": self.room_id},
+            json={"prompt": "Add a queen blue bed", "room_id": self.room_id, "user_id": 1},
         )
 
         self.assertEqual(response.status_code, 200)

@@ -806,16 +806,36 @@ def _save_composite_image(room, composite_data):
     try:
         if composite_data.startswith("data:image"):
             header, encoded = composite_data.split(",", 1)
-            file_ext = "png" if "png" in header else "jpg"
+            file_ext = "png"
+            if "jpeg" in header or "jpg" in header:
+                file_ext = "jpg"
+            elif "webp" in header:
+                file_ext = "webp"
             img_data = base64.b64decode(encoded)
             filename = f"design_room_{room.id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}.{file_ext}"
+            
             out_dir = os.path.join(UPLOAD_FOLDER, "generated")
             os.makedirs(out_dir, exist_ok=True)
             out_path = os.path.join(out_dir, filename)
             with open(out_path, "wb") as f:
                 f.write(img_data)
+                
+            # Also ensure a copy in BASE_DIR/uploads/generated if different
+            base_out_dir = os.path.join(BASE_DIR, "uploads", "generated")
+            if base_out_dir != out_dir:
+                os.makedirs(base_out_dir, exist_ok=True)
+                base_out_path = os.path.join(base_out_dir, filename)
+                try:
+                    with open(base_out_path, "wb") as f:
+                        f.write(img_data)
+                except Exception:
+                    pass
+
             room.generated_image_path = f"/uploads/generated/{filename}"
             room.generated_image_name = filename
+            return room.generated_image_path
+        elif composite_data.startswith("/uploads/") or composite_data.startswith("http"):
+            room.generated_image_path = composite_data
             return room.generated_image_path
     except Exception as e:
         print(f"Error saving composite image: {e}")
