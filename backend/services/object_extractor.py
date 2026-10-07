@@ -15,26 +15,11 @@ if not os.path.exists(UPLOAD_FOLDER):
 EXTRACTED_FOLDER = os.path.join(UPLOAD_FOLDER, "extracted_objects")
 os.makedirs(EXTRACTED_FOLDER, exist_ok=True)
 
-MODEL_PATH = os.path.join(BASE_DIR, "yolov8n-seg.pt")
-if not os.path.exists(MODEL_PATH):
-    MODEL_PATH = os.path.join(ROOT_DIR, "yolov8n-seg.pt")
-if not os.path.exists(MODEL_PATH):
-    MODEL_PATH = "yolov8n-seg.pt"
+from services.model_loader import get_yolo_seg_model, safe_yolo_predict
 
-_seg_model = None
 
 def get_seg_model():
-    global _seg_model
-    if _seg_model is None:
-        try:
-            _seg_model = YOLO(MODEL_PATH)
-        except Exception as e:
-            print(f"Error loading YOLOv8-seg model ({MODEL_PATH}): {e}")
-            try:
-                _seg_model = YOLO("yolov8n.pt")
-            except Exception as e2:
-                print(f"Error loading fallback YOLOv8n: {e2}")
-    return _seg_model
+    return get_yolo_seg_model()
 
 
 CATEGORY_SYNONYMS = {
@@ -173,7 +158,7 @@ def extract_and_segment_object(image_source, category="bed", force_refresh=False
 
         if model is not None:
             try:
-                results = model(img, conf=0.10, verbose=False)
+                results = safe_yolo_predict(model, img, conf=0.10, imgsz=640)
                 if results and len(results) > 0:
                     res = results[0]
             except Exception as e:
@@ -290,7 +275,7 @@ def extract_and_segment_object(image_source, category="bed", force_refresh=False
 
     if model is not None:
         try:
-            results = model(img, conf=0.08, verbose=False)
+            results = safe_yolo_predict(model, img, conf=0.08, imgsz=640)
             if results and len(results) > 0:
                 res = results[0]
         except Exception as e:

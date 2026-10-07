@@ -21,29 +21,11 @@ RESULT_FOLDER = os.path.join(UPLOAD_FOLDER, "results")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
-_model = None
+from services.model_loader import get_yolo_det_model, safe_yolo_predict
+
 
 def get_yolo_model():
-    global _model
-    if _model is None:
-        candidate_paths = [
-            os.path.join(BASE_DIR, "yolov8n.pt"),
-            os.path.join(ROOT_DIR, "yolov8n.pt"),
-            "yolov8n.pt",
-        ]
-        for p in candidate_paths:
-            if os.path.exists(p):
-                try:
-                    _model = YOLO(p)
-                    break
-                except Exception as e:
-                    print(f"Warning: Failed to load YOLO from {p}: {e}")
-        if _model is None:
-            try:
-                _model = YOLO("yolov8n.pt")
-            except Exception as e:
-                print(f"Warning: Could not load default YOLO: {e}")
-    return _model
+    return get_yolo_det_model()
 
 
 def _parse_float(value, default=None):
@@ -108,20 +90,21 @@ def upload_image():
                 try:
                     yolo_mod = get_yolo_model()
                     if yolo_mod is not None:
-                        results = yolo_mod(filepath, conf=0.20)
-                        result = results[0]
-                        for box in result.boxes:
-                            cls = int(box.cls[0])
-                            conf = float(box.conf[0])
-                            object_name = yolo_mod.names[cls]
-                            detected_objects.append(object_name)
-                            xyxy = box.xyxy[0].tolist()
-                            if object_name not in detection_details:
-                                detection_details[object_name] = []
-                            detection_details[object_name].append({
-                                "bbox": [int(v) for v in xyxy],
-                                "confidence": round(conf, 2),
-                            })
+                        results = safe_yolo_predict(yolo_mod, filepath, conf=0.20, imgsz=640)
+                        if results and len(results) > 0:
+                            result = results[0]
+                            for box in result.boxes:
+                                cls = int(box.cls[0])
+                                conf = float(box.conf[0])
+                                object_name = yolo_mod.names[cls]
+                                detected_objects.append(object_name)
+                                xyxy = box.xyxy[0].tolist()
+                                if object_name not in detection_details:
+                                    detection_details[object_name] = []
+                                detection_details[object_name].append({
+                                    "bbox": [int(v) for v in xyxy],
+                                    "confidence": round(conf, 2),
+                                })
                 except Exception as yolo_err:
                     print(f"Fallback YOLO detection error: {yolo_err}")
 

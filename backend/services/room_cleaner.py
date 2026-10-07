@@ -48,15 +48,11 @@ LABEL_MAP = {
     "laptop": "Laptop / Desk Item",
 }
 
+from services.model_loader import get_yolo_seg_model, safe_yolo_predict
+
+
 def get_seg_model():
-    global _seg_model
-    if _seg_model is None:
-        try:
-            _seg_model = YOLO(MODEL_PATH)
-        except Exception as e:
-            print(f"Failed to load YOLOv8-seg model: {e}")
-            _seg_model = YOLO("yolov8n.pt")
-    return _seg_model
+    return get_yolo_seg_model()
 
 
 def _resolve_image_path(relative_path):
@@ -114,8 +110,10 @@ def detect_room_objects(image_path):
             return []
         h, w = img.shape[:2]
 
-        model = get_seg_model()
-        results = model(abs_path, conf=0.18, verbose=False)
+        model = get_yolo_seg_model()
+        results = safe_yolo_predict(model, abs_path, conf=0.18, imgsz=640)
+        if not results or len(results) == 0:
+            return []
         result = results[0]
 
         candidates = []
